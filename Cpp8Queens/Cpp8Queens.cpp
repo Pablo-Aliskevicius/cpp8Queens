@@ -10,6 +10,7 @@
 Command line arguments:
 -v   verbose
 -t   test
+-s n short(n) - try only N different solutions, showing failures
 
 */
 
@@ -28,9 +29,17 @@ int main(int argc, const char** argv)
         {
             case 'v':
                 verbose = true;
+                break;
             case 't':
                 test = true;
-        }
+                break;
+            case 's':
+                int short_trials = atoi(argv[++i]);
+                if (0 < short_trials)
+                {
+                    qns::set_short(short_trials);
+                }
+        } // switch
     }
 
     if (verbose)

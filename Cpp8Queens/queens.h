@@ -6,6 +6,7 @@ namespace qns
 {
     void solve();
     void set_verbose(bool new_val);
+    void set_short(int trials);
     void test();
     
 }
