@@ -1,11 +1,11 @@
-#include <chrono>
+#include <bitset>
 #include <cstdint>
 #include <iostream>
 #include <iomanip>
 #include <vector>
 
 #include "queens.h"
-#include <bitset>
+#include "high_res_clock.h"
 
 using flags_t = uint_fast64_t;
 using map_t = flags_t;
@@ -16,8 +16,8 @@ static bool verbose = false;
 static int trials = -1;
 
 
-// HEY, WE'RE LITTLE ENDIAN HERE!
-const flags_t row_masks[] = {
+// If you consider this is cheating, use template metaprogramming.
+static const flags_t row_masks[] = {
     0xff,
     0xff00, 
     0xff0000, 
@@ -30,7 +30,7 @@ const flags_t row_masks[] = {
 
 
 // HEY, WE'RE LITTLE ENDIAN HERE!
-const flags_t column_masks[] = {
+static const flags_t column_masks[] = {
     0x8080808080808080,
     0x4040404040404040,
     0x2020202020202020,
@@ -47,9 +47,9 @@ const flags_t column_masks[] = {
 //   b"0010 0000" // == 0x20 << 5
 // ...
 // We may have an 'endian' issue. 
-static const flags_t main_diagonal_mask = 0x0102040810204080;
+// static const flags_t main_diagonal_mask = 0x0102040810204080;
 
-const flags_t main_diagonal_parallels[] = {
+static const flags_t main_diagonal_parallels[] = {
     0x0000'0000'0000'0001, // 0
     0x0000'0000'0000'0102, // 1
     0x0000'0000'0001'0204, // 2
@@ -67,8 +67,8 @@ const flags_t main_diagonal_parallels[] = {
     0x8000'0000'0000'0000, // e
 };
 
-static const flags_t secondary_diagonal_mask = 0x8040201008040201;
-const flags_t second_diagonal_parallels[] = {
+// static const flags_t secondary_diagonal_mask = 0x8040201008040201;
+static const flags_t second_diagonal_parallels[] = {
     0x0000'0000'0000'0080, // 0
     0x0000'0000'0000'8040, // 1
     0x0000'0000'0080'4020, // 2
@@ -90,6 +90,7 @@ inline bool is_totally_under_threat(map_t map, int current_column)
 {
     const auto column_mask = column_masks[current_column]; 
     const bool ret = ( (map & column_mask) == column_mask );
+#ifdef _DEBUG
     if (verbose && ret)
     {
         std::cout << "Column " << current_column << " is totally under threat, " 
@@ -97,6 +98,7 @@ inline bool is_totally_under_threat(map_t map, int current_column)
             << map << " includes " << column_mask
             << std::endl;
     }
+#endif // def _DEBUG
     return ret;
 }
 
@@ -111,6 +113,7 @@ std::vector<int> not_threatened_rows(const map_t map, int current_column)
             result.push_back(i);
         }
     }
+#ifdef _DEBUG
     if (verbose)
     {
         std::cout << "Found " << result.size() << " non-threatened rows at column " 
@@ -122,6 +125,7 @@ std::vector<int> not_threatened_rows(const map_t map, int current_column)
             }
             std::cout << std::endl;
     }
+#endif // def _DEBUG
     return result;
 }
 
@@ -150,24 +154,20 @@ void show_map(map_t map)
 }
 
 // Everything by value, on purpose.
-map_t threaten(map_t map, int row, int column)
+inline map_t threaten(map_t map, int row, int column)
 {
-    const map_t shifted_diagonal = main_diagonal_parallels[row + 7 - column];
-    const map_t shifted_second_diagonal = second_diagonal_parallels[row + column];
-
-    // Threaten current row
-    // Threaten main diagonal, starting at current row and current column, to the right only (other columns already populated)
-    // Threaten second diagonal, starting at current row and current column, to the right only (other columns already populated)
-    map |= (row_masks[row] | shifted_diagonal | shifted_second_diagonal);
-
+    map |= (row_masks[row] | main_diagonal_parallels[row + 7 - column] | second_diagonal_parallels[row + column]);
+#ifdef _DEBUG
     if (verbose)
     {
         std::cout << "Just threatened cell [" << row << ", " << column << "]." << std::endl;
         show_map(map);
     }
+#endif // def _DEBUG
     return map;
 }
 
+#ifdef _DEBUG
 void do_show_failure(const map_t map, const std::vector<int>& result)
 {
     using std::cout;
@@ -199,6 +199,7 @@ void do_show_failure(const map_t map, const std::vector<int>& result)
         cout << line << endl;
     cout << endl;
 }
+#endif // def _DEBUG
 
 
 void do_solve(map_t map, std::vector<int> &solution, int current_column)
@@ -209,30 +210,36 @@ void do_solve(map_t map, std::vector<int> &solution, int current_column)
         solutions.push_back(solution);
         return;
     }
+#ifdef _DEBUG
     if (trials > 0 && failures_count >= trials)
     {
         return;
     }
+#endif // def _DEBUG
     map_t new_map = threaten(map, solution[current_column], current_column);
     int next_column = 1 + current_column;
 
     if (is_totally_under_threat(new_map, next_column))
     {
         ++failures_count;
+#ifdef _DEBUG
         if (trials > 0)
         {
             do_show_failure(new_map, solution);
         }
+#endif // def _DEBUG
         return;    
     }
     for (int current_row: not_threatened_rows(new_map, next_column) )
     {
         solution[next_column] = current_row;
-        // Call recursively
+#ifdef _DEBUG
         if (verbose)
         {
             std::cout << "Testing [" << std::dec << current_row << ", " << next_column << "]." << std::endl;
         }
+#endif // def _DEBUG
+        // Call recursively
         do_solve(new_map, solution, next_column);
     }
     // Leave things as they were.
@@ -254,7 +261,7 @@ void do_show_results()
     cout << "The solutions are: " << endl << endl;
     for (const auto &result: solutions)
     {
-        std::vector<std::string> display = { "-.-.-.-.", ".-.-.-.-", "-.-.-.-.", ".-.-.-.-", "-.-.-.-.", ".-.-.-.-", "-.-.-.-.", ".-.-.-.-" };
+        std::vector<std::string> display = { "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-" };
         for (int row = 0; row < result.size(); ++row)
         {
             display[row][result[row]]='Q';
@@ -270,20 +277,16 @@ void qns::solve()
     // Solution that works for an 8x8 chess board only (not generalized to n by n).
     // On the other hand, chess boards have 64 squares.
     std::vector<int> solution(8ULL, -1);
-    using Clock = std::chrono::high_resolution_clock;
-    auto begin = Clock::now();
+    hi_res_timer timer;
     for (int current_row : {0, 1, 2, 3})
     {
         map_t map = 0ULL;
         solution[0] = current_row;
         do_solve(map, solution, 0);
     }
-    auto end_ = Clock::now();
-    using std::chrono::nanoseconds;
-    using std::chrono::duration_cast;
-    auto ns = duration_cast<nanoseconds>(end_ - begin);
-    std::cout << "Resolving took " << ns.count() << " nanoseconds." << std::endl;
+    timer.Stop();
     do_show_results();
+    std::cout << "Resolving took " << timer.GetElapsedMicroseconds() << " microseconds." << std::endl;
 }
 
 void qns::set_verbose(bool new_val)
@@ -318,7 +321,7 @@ void qns::test()
     }
 
     cout << "=== Main diagonal ===" << endl;
-    show_map((map_t)main_diagonal_mask);
+    //show_map((map_t)main_diagonal_mask);
 
     for (int i = 0; i < sizeof(main_diagonal_parallels) / sizeof(main_diagonal_parallels[0]); ++i)
     {
@@ -327,7 +330,7 @@ void qns::test()
     }
 
     cout << "=== Second diagonal ===" << endl;
-    show_map((map_t)secondary_diagonal_mask);
+    //show_map((map_t)secondary_diagonal_mask);
 
     for (int i = 0; i < sizeof(second_diagonal_parallels) / sizeof(second_diagonal_parallels[0]); ++i)
     {

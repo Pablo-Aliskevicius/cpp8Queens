@@ -140,9 +140,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Cpp8Queens.cpp" />
+    <ClCompile Include="high_res_clock.cpp" />
     <ClCompile Include="queens.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="high_res_clock.h" />
     <ClInclude Include="queens.h" />
   </ItemGroup>
   <ItemGroup>
