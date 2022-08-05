@@ -10,8 +10,9 @@
 using flags_t = uint_fast64_t;
 using map_t = flags_t;
 
-static std::vector<std::vector<int>> solutions;
-static uint_fast64_t failures_count = 0;
+static std::vector<std::vector<int>> solutions(46, std::vector<int>(8, -1));
+static uint_fast16_t failures_count = 0; // up to 20'160 = 4 * 7!
+static uint_fast16_t success_count = 0; // up to 20'160 = 4 * 7!
 static bool verbose = false;
 static int trials = -1;
 
@@ -89,8 +90,8 @@ static const flags_t second_diagonal_parallels[] = {
 inline bool is_totally_under_threat(map_t map, int current_column)
 {
     const auto column_mask = column_masks[current_column]; 
-    const bool ret = ( (map & column_mask) == column_mask );
 #ifdef _DEBUG
+    const bool ret = ((map & column_mask) == column_mask);
     if (verbose && ret)
     {
         std::cout << "Column " << current_column << " is totally under threat, " 
@@ -98,17 +99,24 @@ inline bool is_totally_under_threat(map_t map, int current_column)
             << map << " includes " << column_mask
             << std::endl;
     }
-#endif // def _DEBUG
     return ret;
+#else
+    return ((map & column_mask) == column_mask);
+#endif // def _DEBUG
+    
 }
 
-std::vector<int> not_threatened_rows(const map_t map, int current_column)
+// No performance difference between this and the next version.
+std::vector<int> not_threatened_rows_001(const map_t map, int current_column)
 {
     std::vector<int> result;
-    result.reserve(8 - current_column); // This is as should be, believe me. 
-    for (int i = 0; i < 8; ++i)
+    // This is as should be, believe me. 
+    // Each queen on the board threatens its own row, so the maximum number
+    // of non-threatened rows is the number of still unhandled columns.
+    result.reserve(8 - current_column);
+    for (int_fast8_t i = 0; i < 8; ++i)
     {
-        if ( (map & row_masks[i] & column_masks[current_column]) == 0ULL)
+        if ((map & row_masks[i] & column_masks[current_column]) == 0ULL)
         {
             result.push_back(i);
         }
@@ -116,14 +124,47 @@ std::vector<int> not_threatened_rows(const map_t map, int current_column)
 #ifdef _DEBUG
     if (verbose)
     {
-        std::cout << "Found " << result.size() << " non-threatened rows at column " 
-            << current_column 
+        std::cout << "Found " << result.size() << " non-threatened rows at column "
+            << current_column
             << " and they are ";
-            for (auto val : result)
-            {
-                std::cout << val << ", ";
-            }
-            std::cout << std::endl;
+        for (auto val : result)
+        {
+            std::cout << val << ", ";
+        }
+        std::cout << std::endl;
+    }
+#endif // def _DEBUG
+    return result;
+}
+
+std::vector<int> not_threatened_rows(const map_t map, int current_column)
+{
+    std::vector<int> result;
+    // This is as should be, believe me. 
+    // Each queen on the board threatens its own row, so the maximum number
+    // of non-threatened rows is the number of still unhandled columns.
+    result.reserve(8 - current_column);
+    const auto mask = (map & column_masks[current_column]);
+    // One 64-bit integer == 8 chars.
+    const char* pi = reinterpret_cast<const char*>(&mask);
+    for (int_fast8_t i = 0; i < 8; ++i)
+    {
+        if (pi[i] == 0)
+        {
+            result.push_back(i);
+        }
+    }
+#ifdef _DEBUG
+    if (verbose)
+    {
+        std::cout << "Found " << result.size() << " non-threatened rows at column "
+            << current_column
+            << " and they are ";
+        for (auto val : result)
+        {
+            std::cout << val << ", ";
+        }
+        std::cout << std::endl;
     }
 #endif // def _DEBUG
     return result;
@@ -206,8 +247,8 @@ void do_solve(map_t map, std::vector<int> &solution, int current_column)
 {
     if (current_column == (solution.size() - 1))
     {
-        // Success!
-        solutions.push_back(solution);
+        // Success! Copy the solution. Don't move, we still need the buffer.
+        std::copy(solution.cbegin(), solution.cend(), solutions[success_count++].begin());
         return;
     }
 #ifdef _DEBUG
@@ -216,8 +257,8 @@ void do_solve(map_t map, std::vector<int> &solution, int current_column)
         return;
     }
 #endif // def _DEBUG
-    map_t new_map = threaten(map, solution[current_column], current_column);
-    int next_column = 1 + current_column;
+    const map_t new_map = threaten(map, solution[current_column], current_column);
+    const int next_column = 1 + current_column;
 
     if (is_totally_under_threat(new_map, next_column))
     {
@@ -230,7 +271,7 @@ void do_solve(map_t map, std::vector<int> &solution, int current_column)
 #endif // def _DEBUG
         return;    
     }
-    for (int current_row: not_threatened_rows(new_map, next_column) )
+    for (auto current_row: not_threatened_rows(new_map, next_column) )
     {
         solution[next_column] = current_row;
 #ifdef _DEBUG
@@ -244,7 +285,6 @@ void do_solve(map_t map, std::vector<int> &solution, int current_column)
     }
     // Leave things as they were.
     solution[next_column] = -1;
-
 }
 
 
@@ -253,7 +293,7 @@ void do_show_results()
     using std::cout;
     using std::endl;
     
-    cout << "We had " << failures_count << " failures, and " << solutions.size() << " solutions." << endl;
+    cout << "We had " << failures_count << " failures, and " << success_count << " solutions." << endl;
 
     //if (!verbose)
     //    return;
@@ -261,6 +301,11 @@ void do_show_results()
     cout << "The solutions are: " << endl << endl;
     for (const auto &result: solutions)
     {
+        if (result[0] == -1)
+        {
+            break;
+        }
+
         std::vector<std::string> display = { "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-" };
         for (int row = 0; row < result.size(); ++row)
         {
@@ -276,13 +321,13 @@ void qns::solve()
 {
     // Solution that works for an 8x8 chess board only (not generalized to n by n).
     // On the other hand, chess boards have 64 squares.
+    // solutions.reserve(46); // Cheating? Nope, just using prior knowledge.
     std::vector<int> solution(8ULL, -1);
     hi_res_timer timer;
-    for (int current_row : {0, 1, 2, 3})
+    for (int_fast8_t current_row = 0; current_row < 4; ++current_row)
     {
-        map_t map = 0ULL;
         solution[0] = current_row;
-        do_solve(map, solution, 0);
+        do_solve(map_t{ 0ULL }, solution, 0);
     }
     timer.Stop();
     do_show_results();
