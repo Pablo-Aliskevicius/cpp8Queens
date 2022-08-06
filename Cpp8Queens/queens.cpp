@@ -89,6 +89,20 @@ static const flags_t second_diagonal_parallels[] = {
     0x0100'0000'0000'0000, // e
 };
 
+const int sentinel = -1;
+// Save some time in allocations at run time. 
+std::vector<std::vector<int>> safe_indices{
+    std::vector<int>(8, sentinel),  // 0
+    std::vector<int>(8, sentinel),
+    std::vector<int>(8, sentinel), 
+    std::vector<int>(8, sentinel),  // 3
+    std::vector<int>(8, sentinel),
+    std::vector<int>(8, sentinel),
+    std::vector<int>(8, sentinel),  // 6
+    std::vector<int>(8, sentinel),  // 7
+};
+
+
 inline bool is_totally_under_threat(map_t map, int current_column)
 {
     const auto column_mask = column_masks[current_column]; 
@@ -109,27 +123,24 @@ inline bool is_totally_under_threat(map_t map, int current_column)
 }
 
 
-std::vector<int> not_threatened_rows(const map_t map, int current_column)
+const std::vector<int>& not_threatened_rows(const map_t map, int current_column)
 {
-    std::vector<int> result;
-    // This is as should be, believe me. 
-    // Each queen on the board threatens its own row, so the maximum number
-    // of non-threatened rows is the number of still unhandled columns.
-    result.reserve(8 - current_column);
+    std::vector<int>& result = safe_indices[current_column];
     const auto mask = (map & column_masks[current_column]);
     // One 64-bit integer == 8 chars.
     const char* pi = reinterpret_cast<const char*>(&mask);
+    int j = 0;
     for (int_fast8_t i = 0; i < 8; ++i)
     {
         if (!pi[i])
         {
-            result.push_back(i);
+            result[j++] = i;
         }
     }
 #ifdef _DEBUG
     if (verbose)
     {
-        std::cout << "Found " << result.size() << " non-threatened rows at column "
+        std::cout << "Found " << j << " non-threatened rows at column "
             << current_column
             << " and they are ";
         for (auto val : result)
@@ -139,6 +150,10 @@ std::vector<int> not_threatened_rows(const map_t map, int current_column)
         std::cout << std::endl;
     }
 #endif // def _DEBUG
+    if (j < 8)
+    { 
+        result[j] = sentinel;
+    }
     return result;
 }
 
@@ -243,6 +258,10 @@ void do_solve(map_t map, std::vector<int> &solution, int current_column)
     }
     for (auto current_row: not_threatened_rows(new_map, next_column))
     {
+        if (sentinel == current_row)
+        {
+            break;
+        }
         solution[next_column] = current_row;
 #ifdef _DEBUG
         if (verbose)
@@ -257,7 +276,7 @@ void do_solve(map_t map, std::vector<int> &solution, int current_column)
     solution[next_column] = -1;
 }
 
-// #define FOR_PROFILING
+#define FOR_PROFILING
 #ifdef FOR_PROFILING
 void qns::solve()
 {
@@ -266,7 +285,11 @@ void qns::solve()
     // solutions.reserve(46); // Cheating? Nope, just using prior knowledge.
     std::vector<int> solution(8ULL, -1);
     const int loops = 1000;
-    for (int loop = 0; loop < 1000; ++loop)
+    unsigned long long max_time = 0ULL;
+    unsigned long long min_time = ~0ULL;
+    unsigned long long tot_time = 0ULL;
+
+    for (int loop = 0; loop < loops; ++loop)
     {
         failures_count = 0;
         success_count = 0;
@@ -277,8 +300,14 @@ void qns::solve()
             do_solve(map_t{ 0ULL }, solution, 0);
         }
         timer.Stop();
-        std::cout << "Resolving took " << timer.GetElapsedMicroseconds() << " microseconds." << std::endl;
+        auto microseconds = timer.GetElapsedMicroseconds();
+        std::cout << "Resolving took " << microseconds << " microseconds." << std::endl;
+        if (microseconds < min_time) min_time = microseconds;
+        if (microseconds > max_time) max_time = microseconds;
+        tot_time += microseconds;
     }
+    std::cout << "The fastest run took " << min_time << " microseconds, the slowest took " << max_time
+        << ", and an average of " << loops << " runs was " << double(tot_time) / loops << std::endl;
     do_show_results(failures_count, success_count, solutions);
 }
 #else
