@@ -21,9 +21,21 @@
     <ClCompile Include="queens.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="high_res_clock.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="write_solutions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="queens.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="high_res_clock.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="write_solutions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

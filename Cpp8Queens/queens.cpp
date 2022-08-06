@@ -6,6 +6,7 @@
 
 #include "queens.h"
 #include "high_res_clock.h"
+#include "write_solutions.h"
 
 using flags_t = uint_fast64_t;
 using map_t = flags_t;
@@ -14,7 +15,7 @@ static std::vector<std::vector<int>> solutions(46, std::vector<int>(8, -1));
 static uint_fast16_t failures_count = 0; // up to 20'160 = 4 * 7!
 static uint_fast16_t success_count = 0; // up to 20'160 = 4 * 7!
 static bool verbose = false;
-static int trials = -1;
+static int_fast16_t trials = -1;
 
 
 // If you consider this is cheating, use template metaprogramming.
@@ -41,6 +42,7 @@ static const flags_t column_masks[] = {
     0x0202020202020202,
     0x0101010101010101,
 };
+
 
 // Visualize:
 //   b"1000 0000" // == 0x80 << 7
@@ -106,36 +108,6 @@ inline bool is_totally_under_threat(map_t map, int current_column)
     
 }
 
-// No performance difference between this and the next version.
-std::vector<int> not_threatened_rows_001(const map_t map, int current_column)
-{
-    std::vector<int> result;
-    // This is as should be, believe me. 
-    // Each queen on the board threatens its own row, so the maximum number
-    // of non-threatened rows is the number of still unhandled columns.
-    result.reserve(8 - current_column);
-    for (int_fast8_t i = 0; i < 8; ++i)
-    {
-        if ((map & row_masks[i] & column_masks[current_column]) == 0ULL)
-        {
-            result.push_back(i);
-        }
-    }
-#ifdef _DEBUG
-    if (verbose)
-    {
-        std::cout << "Found " << result.size() << " non-threatened rows at column "
-            << current_column
-            << " and they are ";
-        for (auto val : result)
-        {
-            std::cout << val << ", ";
-        }
-        std::cout << std::endl;
-    }
-#endif // def _DEBUG
-    return result;
-}
 
 std::vector<int> not_threatened_rows(const map_t map, int current_column)
 {
@@ -149,7 +121,7 @@ std::vector<int> not_threatened_rows(const map_t map, int current_column)
     const char* pi = reinterpret_cast<const char*>(&mask);
     for (int_fast8_t i = 0; i < 8; ++i)
     {
-        if (pi[i] == 0)
+        if (!pi[i])
         {
             result.push_back(i);
         }
@@ -169,7 +141,6 @@ std::vector<int> not_threatened_rows(const map_t map, int current_column)
 #endif // def _DEBUG
     return result;
 }
-
 
 void show_map(map_t map)
 {
@@ -242,7 +213,6 @@ void do_show_failure(const map_t map, const std::vector<int>& result)
 }
 #endif // def _DEBUG
 
-
 void do_solve(map_t map, std::vector<int> &solution, int current_column)
 {
     if (current_column == (solution.size() - 1))
@@ -252,7 +222,7 @@ void do_solve(map_t map, std::vector<int> &solution, int current_column)
         return;
     }
 #ifdef _DEBUG
-    if (trials > 0 && failures_count >= trials)
+    if (trials > 0 && failures_count >= static_cast<decltype(failures_count)>(trials))
     {
         return;
     }
@@ -271,7 +241,7 @@ void do_solve(map_t map, std::vector<int> &solution, int current_column)
 #endif // def _DEBUG
         return;    
     }
-    for (auto current_row: not_threatened_rows(new_map, next_column) )
+    for (auto current_row: not_threatened_rows(new_map, next_column))
     {
         solution[next_column] = current_row;
 #ifdef _DEBUG
@@ -287,36 +257,31 @@ void do_solve(map_t map, std::vector<int> &solution, int current_column)
     solution[next_column] = -1;
 }
 
-
-void do_show_results()
+// #define FOR_PROFILING
+#ifdef FOR_PROFILING
+void qns::solve()
 {
-    using std::cout;
-    using std::endl;
-    
-    cout << "We had " << failures_count << " failures, and " << success_count << " solutions." << endl;
-
-    //if (!verbose)
-    //    return;
-        
-    cout << "The solutions are: " << endl << endl;
-    for (const auto &result: solutions)
+    // Solution that works for an 8x8 chess board only (not generalized to n by n).
+    // On the other hand, chess boards have 64 squares.
+    // solutions.reserve(46); // Cheating? Nope, just using prior knowledge.
+    std::vector<int> solution(8ULL, -1);
+    const int loops = 1000;
+    for (int loop = 0; loop < 1000; ++loop)
     {
-        if (result[0] == -1)
+        failures_count = 0;
+        success_count = 0;
+        hi_res_timer timer;
+        for (int_fast8_t current_row = 0; current_row < 4; ++current_row)
         {
-            break;
+            solution[0] = current_row;
+            do_solve(map_t{ 0ULL }, solution, 0);
         }
-
-        std::vector<std::string> display = { "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-" };
-        for (int row = 0; row < result.size(); ++row)
-        {
-            display[row][result[row]]='Q';
-        }
-        for (const auto& line: display)
-            cout << line << endl;
-        cout << endl;
+        timer.Stop();
+        std::cout << "Resolving took " << timer.GetElapsedMicroseconds() << " microseconds." << std::endl;
     }
+    do_show_results(failures_count, success_count, solutions);
 }
-
+#else
 void qns::solve()
 {
     // Solution that works for an 8x8 chess board only (not generalized to n by n).
@@ -330,9 +295,10 @@ void qns::solve()
         do_solve(map_t{ 0ULL }, solution, 0);
     }
     timer.Stop();
-    do_show_results();
     std::cout << "Resolving took " << timer.GetElapsedMicroseconds() << " microseconds." << std::endl;
+    do_show_results(failures_count, success_count, solutions);
 }
+#endif // FOR_PROFILING
 
 void qns::set_verbose(bool new_val)
 {

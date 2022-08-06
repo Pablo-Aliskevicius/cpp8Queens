@@ -144,10 +144,12 @@
     <ClCompile Include="Cpp8Queens.cpp" />
     <ClCompile Include="high_res_clock.cpp" />
     <ClCompile Include="queens.cpp" />
+    <ClCompile Include="write_solutions.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="high_res_clock.h" />
     <ClInclude Include="queens.h" />
+    <ClInclude Include="write_solutions.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Documentation.htm">
