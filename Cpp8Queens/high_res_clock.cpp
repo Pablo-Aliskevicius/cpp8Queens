@@ -1,3 +1,14 @@
+#ifdef _MSC_VER // or _MSC_VER < 1930, depending...
+
+/*
+
+From https://docs.microsoft.com/en-us/windows/win32/sysinfo/acquiring-high-resolution-time-stamps#examples-for-acquiring-time-stamps
+Unfortunately, std::chrono::high_resolution_clock is low-resolution for some older versions of Visual C++.
+
+A standards-based implementation is available below for reference.
+
+*/
+
 #include <windows.h>
 #include <profileapi.h>
 
@@ -31,12 +42,38 @@ public:
 		ElapsedMicroseconds.QuadPart *= 1000000;
 		ElapsedMicroseconds.QuadPart /= Frequency.QuadPart;
 	}
-	long long GetElapsedMicroseconds()
+	long long GetElapsedMicroseconds() const
 	{
 		return ElapsedMicroseconds.QuadPart;
 	}
 
 };
+#else
+#include <chrono>
+#include "high_res_clock.h"
+
+class hi_res_timer::TimerData
+{
+	using Clock = std::chrono::high_resolution_clock;
+	const Clock::time_point m_begin = Clock::now();
+	long long m_duration = -1LL;
+public:
+	TimerData() = default;
+	void Stop()
+	{
+		const auto end_ = Clock::now();
+		using std::chrono::microseconds;
+		using std::chrono::duration_cast;
+		auto ns = duration_cast<microseconds>(end_ - m_begin);
+		m_duration = ns.count();
+	}
+	long long GetElapsedMicroseconds() const
+	{
+		return m_duration;
+	}
+};
+
+#endif // _MSC_VER
 
 hi_res_timer::hi_res_timer()
 {

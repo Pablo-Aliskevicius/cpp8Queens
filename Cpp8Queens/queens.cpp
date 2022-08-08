@@ -19,7 +19,7 @@ static int_fast16_t trials = -1;
 
 
 // If you consider this is cheating, use template metaprogramming.
-static const flags_t row_masks[] = {
+static constexpr flags_t row_masks[] = {
     0xff,
     0xff00, 
     0xff0000, 
@@ -32,7 +32,7 @@ static const flags_t row_masks[] = {
 
 
 // HEY, WE'RE LITTLE ENDIAN HERE!
-static const flags_t column_masks[] = {
+static constexpr flags_t column_masks[] = {
     0x8080808080808080,
     0x4040404040404040,
     0x2020202020202020,
@@ -52,7 +52,7 @@ static const flags_t column_masks[] = {
 // We may have an 'endian' issue. 
 // static const flags_t main_diagonal_mask = 0x0102040810204080;
 
-static const flags_t main_diagonal_parallels[] = {
+static constexpr flags_t main_diagonal_parallels[] = {
     0x0000'0000'0000'0001, // 0
     0x0000'0000'0000'0102, // 1
     0x0000'0000'0001'0204, // 2
@@ -71,7 +71,7 @@ static const flags_t main_diagonal_parallels[] = {
 };
 
 // static const flags_t secondary_diagonal_mask = 0x8040201008040201;
-static const flags_t second_diagonal_parallels[] = {
+static constexpr flags_t second_diagonal_parallels[] = {
     0x0000'0000'0000'0080, // 0
     0x0000'0000'0000'8040, // 1
     0x0000'0000'0080'4020, // 2
@@ -126,17 +126,20 @@ inline bool is_totally_under_threat(map_t map, int current_column)
 const std::vector<int>& not_threatened_rows(const map_t map, int current_column)
 {
     std::vector<int>& result = safe_indices[current_column];
-    const auto mask = (map & column_masks[current_column]);
+    const map_t mask = (map & column_masks[current_column]);
     // One 64-bit integer == 8 chars.
-    const char* pi = reinterpret_cast<const char*>(&mask);
+    const char* pRow = reinterpret_cast<const char*>(&mask);
     int j = 0;
-    for (int_fast8_t i = 0; i < 8; ++i)
-    {
-        if (!pi[i])
-        {
-            result[j++] = i;
-        }
-    }
+    // Manual loop unrolling, ugly as it looks, but fast like hell.
+    int_fast8_t i = -1;
+    if (!pRow[++i]) result[j++] = i;
+    if (!pRow[++i]) result[j++] = i;
+    if (!pRow[++i]) result[j++] = i;
+    if (!pRow[++i]) result[j++] = i;
+    if (!pRow[++i]) result[j++] = i;
+    if (!pRow[++i]) result[j++] = i;
+    if (!pRow[++i]) result[j++] = i;
+    if (!pRow[++i]) result[j++] = i;
 #ifdef _DEBUG
     if (verbose)
     {
@@ -150,7 +153,7 @@ const std::vector<int>& not_threatened_rows(const map_t map, int current_column)
         std::cout << std::endl;
     }
 #endif // def _DEBUG
-    if (j < 8)
+   if (j < 8)
     { 
         result[j] = sentinel;
     }
@@ -180,18 +183,57 @@ void show_map(map_t map)
     std::cout << std::endl;
 }
 
+
+// Some good old-fashioned template metaprogramming to OR masks at compile-time.
+template<int row, int column>
+struct threat_mask {
+    enum struct _b : map_t {
+        value = (row_masks[row] | main_diagonal_parallels[row + 7 - column] | second_diagonal_parallels[row + column])
+    };
+};
+
+static const std::vector<map_t> threats {
+    (map_t) threat_mask<0, 0>::_b::value, (map_t) threat_mask<0, 1>::_b::value, (map_t) threat_mask<0, 2>::_b::value, (map_t) threat_mask<0, 3>::_b::value,
+    (map_t) threat_mask<0, 4>::_b::value, (map_t) threat_mask<0, 5>::_b::value, (map_t) threat_mask<0, 6>::_b::value, (map_t) threat_mask<0, 7>::_b::value,
+                                                                                                                      
+    (map_t) threat_mask<1, 0>::_b::value, (map_t) threat_mask<1, 1>::_b::value, (map_t) threat_mask<1, 2>::_b::value, (map_t) threat_mask<1, 3>::_b::value,
+    (map_t) threat_mask<1, 4>::_b::value, (map_t) threat_mask<1, 5>::_b::value, (map_t) threat_mask<1, 6>::_b::value, (map_t) threat_mask<1, 7>::_b::value,
+                                                                                                                      
+    (map_t) threat_mask<2, 0>::_b::value, (map_t) threat_mask<2, 1>::_b::value, (map_t) threat_mask<2, 2>::_b::value, (map_t) threat_mask<2, 3>::_b::value,
+    (map_t) threat_mask<2, 4>::_b::value, (map_t) threat_mask<2, 5>::_b::value, (map_t) threat_mask<2, 6>::_b::value, (map_t) threat_mask<2, 7>::_b::value,
+                                                                                                                      
+    (map_t) threat_mask<3, 0>::_b::value, (map_t) threat_mask<3, 1>::_b::value, (map_t) threat_mask<3, 2>::_b::value, (map_t) threat_mask<3, 3>::_b::value,
+    (map_t) threat_mask<3, 4>::_b::value, (map_t) threat_mask<3, 5>::_b::value, (map_t) threat_mask<3, 6>::_b::value, (map_t) threat_mask<3, 7>::_b::value,
+                                                                                                                      
+    (map_t) threat_mask<4, 0>::_b::value, (map_t) threat_mask<4, 1>::_b::value, (map_t) threat_mask<4, 2>::_b::value, (map_t) threat_mask<4, 3>::_b::value,
+    (map_t) threat_mask<4, 4>::_b::value, (map_t) threat_mask<4, 5>::_b::value, (map_t) threat_mask<4, 6>::_b::value, (map_t) threat_mask<4, 7>::_b::value,
+                                                                                                                      
+    (map_t) threat_mask<5, 0>::_b::value, (map_t) threat_mask<5, 1>::_b::value, (map_t) threat_mask<5, 2>::_b::value, (map_t) threat_mask<5, 3>::_b::value,
+    (map_t) threat_mask<5, 4>::_b::value, (map_t) threat_mask<5, 5>::_b::value, (map_t) threat_mask<5, 6>::_b::value, (map_t) threat_mask<5, 7>::_b::value,
+                                                                                                                      
+    (map_t) threat_mask<6, 0>::_b::value, (map_t) threat_mask<6, 1>::_b::value, (map_t) threat_mask<6, 2>::_b::value, (map_t) threat_mask<6, 3>::_b::value,
+    (map_t) threat_mask<6, 4>::_b::value, (map_t) threat_mask<6, 5>::_b::value, (map_t) threat_mask<6, 6>::_b::value, (map_t) threat_mask<6, 7>::_b::value,
+                                                                                                                      
+    (map_t) threat_mask<7, 0>::_b::value, (map_t) threat_mask<7, 1>::_b::value, (map_t) threat_mask<7, 2>::_b::value, (map_t) threat_mask<7, 3>::_b::value,
+    (map_t) threat_mask<7, 4>::_b::value, (map_t) threat_mask<7, 5>::_b::value, (map_t) threat_mask<7, 6>::_b::value, (map_t) threat_mask<7, 7>::_b::value
+};
+
+
 // Everything by value, on purpose.
 inline map_t threaten(map_t map, int row, int column)
 {
-    map |= (row_masks[row] | main_diagonal_parallels[row + 7 - column] | second_diagonal_parallels[row + column]);
+// Before template metaprogramming we did this:
+//  map |= (row_masks[row] | main_diagonal_parallels[row + 7 - column] | second_diagonal_parallels[row + column]);
 #ifdef _DEBUG
+    map |= threats[row * 8 + column];
     if (verbose)
     {
         std::cout << "Just threatened cell [" << row << ", " << column << "]." << std::endl;
         show_map(map);
     }
-#endif // def _DEBUG
     return map;
+#endif // def _DEBUG
+    return map | threats[row << 3 | column];
 }
 
 #ifdef _DEBUG
