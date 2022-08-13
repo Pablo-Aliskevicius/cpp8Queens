@@ -16,6 +16,9 @@ static uint_fast16_t failures_count = 0; // up to 20'160 = 4 * 7!
 static uint_fast16_t success_count = 0; // up to 20'160 = 4 * 7!
 static bool verbose = false;
 static int_fast16_t trials = -1;
+static int board_size = 8; // Supported sizes: 4 - 8.
+
+static constexpr int maximum_allowed_board_size = 8; // memory allocations are based on this. 
 
 
 // If you consider this is cheating, use template metaprogramming.
@@ -30,6 +33,8 @@ static constexpr flags_t row_masks[] = {
     0xff00000000000000, 
 }; 
 
+static_assert(sizeof(row_masks) / sizeof(row_masks[0]) == maximum_allowed_board_size, 
+    "Literal array of wrong size here.");
 
 // HEY, WE'RE LITTLE ENDIAN HERE!
 static constexpr flags_t column_masks[] = {
@@ -42,6 +47,9 @@ static constexpr flags_t column_masks[] = {
     0x0202020202020202,
     0x0101010101010101,
 };
+
+static_assert(sizeof(column_masks) / sizeof(column_masks[0]) == maximum_allowed_board_size, 
+    "Literal array of wrong size here.");
 
 
 // Visualize:
@@ -70,6 +78,10 @@ static constexpr flags_t main_diagonal_parallels[] = {
     0x8000'0000'0000'0000, // e
 };
 
+static_assert(sizeof(main_diagonal_parallels) / sizeof(main_diagonal_parallels[0]) == (maximum_allowed_board_size * 2 - 1), 
+    "Literal array of wrong size here.");
+
+
 // static const flags_t secondary_diagonal_mask = 0x8040201008040201;
 static constexpr flags_t second_diagonal_parallels[] = {
     0x0000'0000'0000'0080, // 0
@@ -89,17 +101,21 @@ static constexpr flags_t second_diagonal_parallels[] = {
     0x0100'0000'0000'0000, // e
 };
 
+static_assert(sizeof(second_diagonal_parallels) / sizeof(second_diagonal_parallels[0]) == (maximum_allowed_board_size * 2 - 1), 
+    "Literal array of wrong size here.");
+
+
 const int sentinel = -1;
 // Save some time in allocations at run time. 
 std::vector<std::vector<int>> safe_indices{
-    std::vector<int>(8, sentinel),  // 0
-    std::vector<int>(8, sentinel),
-    std::vector<int>(8, sentinel), 
-    std::vector<int>(8, sentinel),  // 3
-    std::vector<int>(8, sentinel),
-    std::vector<int>(8, sentinel),
-    std::vector<int>(8, sentinel),  // 6
-    std::vector<int>(8, sentinel),  // 7
+    std::vector<int>(maximum_allowed_board_size, sentinel),  // 0
+    std::vector<int>(maximum_allowed_board_size, sentinel),
+    std::vector<int>(maximum_allowed_board_size, sentinel), 
+    std::vector<int>(maximum_allowed_board_size, sentinel),  // 3
+    std::vector<int>(maximum_allowed_board_size, sentinel),
+    std::vector<int>(maximum_allowed_board_size, sentinel),
+    std::vector<int>(maximum_allowed_board_size, sentinel),  // 6
+    std::vector<int>(maximum_allowed_board_size, sentinel),  // 7
 };
 
 
@@ -131,15 +147,25 @@ const std::vector<int>& not_threatened_rows(const map_t map, int current_column)
     const char* pRow = reinterpret_cast<const char*>(&mask);
     int j = 0;
     // Manual loop unrolling, ugly as it looks, but fast like hell.
+    // To allow several board sizes (4-8), we'll use something inspired in the Duff Device.
     int_fast8_t i = -1;
-    if (!pRow[++i]) result[j++] = i;
-    if (!pRow[++i]) result[j++] = i;
-    if (!pRow[++i]) result[j++] = i;
-    if (!pRow[++i]) result[j++] = i;
-    if (!pRow[++i]) result[j++] = i;
-    if (!pRow[++i]) result[j++] = i;
-    if (!pRow[++i]) result[j++] = i;
-    if (!pRow[++i]) result[j++] = i;
+    switch (board_size)
+    {
+    case 8:
+    default:
+        if (!pRow[++i]) result[j++] = i;
+    case 7:
+        if (!pRow[++i]) result[j++] = i;
+    case 6:
+        if (!pRow[++i]) result[j++] = i;
+    case 5:
+        if (!pRow[++i]) result[j++] = i;
+    case 4:
+        if (!pRow[++i]) result[j++] = i;
+        if (!pRow[++i]) result[j++] = i;
+        if (!pRow[++i]) result[j++] = i;
+        if (!pRow[++i]) result[j++] = i;
+    }
 #ifdef _DEBUG
     if (verbose)
     {
@@ -244,9 +270,9 @@ void do_show_failure(const map_t map, const std::vector<int>& result)
 
 
     std::vector<std::string> display = { "--------", "--------", "--------", "--------", "--------", "--------", "--------", "--------" };
-    for (int row = 0; row < 8; ++row)
+    for (int row = 0; row < board_size; ++row)
     {
-        for (int col = 0; col < 8; ++col)
+        for (int col = 0; col < board_size; ++col)
         {
             if (map & row_masks[row] & column_masks[col])
             {
@@ -265,14 +291,14 @@ void do_show_failure(const map_t map, const std::vector<int>& result)
         display[row][col] = 'Q';
     }
     for (const auto& line : display)
-        cout << line << endl;
+        cout << line.substr(0, board_size) << endl;
     cout << endl;
 }
 #endif // def _DEBUG
 
 void do_solve(map_t map, std::vector<int> &solution, int current_column)
 {
-    if (current_column == (solution.size() - 1))
+    if (current_column == (board_size - 1))
     {
         // Success! Copy the solution. Don't move, we still need the buffer.
         std::copy(solution.cbegin(), solution.cend(), solutions[success_count++].begin());
@@ -306,6 +332,7 @@ void do_solve(map_t map, std::vector<int> &solution, int current_column)
         }
         solution[next_column] = current_row;
 #ifdef _DEBUG
+        _ASSERT_EXPR(current_row < board_size, "Bug found: row outside the board.");
         if (verbose)
         {
             std::cout << "Testing [" << std::dec << current_row << ", " << next_column << "]." << std::endl;
@@ -325,32 +352,39 @@ void qns::solve()
     // Solution that works for an 8x8 chess board only (not generalized to n by n).
     // On the other hand, chess boards have 64 squares.
     // solutions.reserve(46); // Cheating? Nope, just using prior knowledge.
-    std::vector<int> solution(8ULL, -1);
+    std::vector<int> solution(maximum_allowed_board_size, -1);
     const int loops = 1000;
+    const int starting_rows_to_test = (board_size / 2) + (board_size % 2);
     unsigned long long max_time = 0ULL;
     unsigned long long min_time = ~0ULL;
     unsigned long long tot_time = 0ULL;
+
 
     for (int loop = 0; loop < loops; ++loop)
     {
         failures_count = 0;
         success_count = 0;
+        map_t starting_map{ 0ULL };
+        for (int i = board_size; i < maximum_allowed_board_size; ++i)
+        {
+            starting_map |= row_masks[i]; // Threaten all rows outside the board.
+        }
         hi_res_timer timer;
-        for (int_fast8_t current_row = 0; current_row < 4; ++current_row)
+        for (int_fast8_t current_row = 0; current_row < starting_rows_to_test; ++current_row)
         {
             solution[0] = current_row;
-            do_solve(map_t{ 0ULL }, solution, 0);
+            do_solve(starting_map, solution, 0);
         }
         timer.Stop();
         auto microseconds = timer.GetElapsedMicroseconds();
-        std::cout << "Resolving took " << microseconds << " microseconds." << std::endl;
+        // std::cout << "Resolving took " << microseconds << " microseconds." << std::endl;
         if (microseconds < min_time) min_time = microseconds;
         if (microseconds > max_time) max_time = microseconds;
         tot_time += microseconds;
     }
     std::cout << "The fastest run took " << min_time << " microseconds, the slowest took " << max_time
         << ", and an average of " << loops << " runs was " << double(tot_time) / loops << std::endl;
-    do_show_results(failures_count, success_count, solutions);
+    do_show_results(failures_count, success_count, solutions, board_size);
 }
 #else
 void qns::solve()
@@ -436,4 +470,20 @@ void qns::test()
     /*map_t map = 0ULL;
     map = threaten(map, 4, 2);
     show_map(map);*/
+}
+
+void qns::set_board_size(int size)
+{
+    if (size < 4)
+    {
+        std::cout << "Size must be at least 4. Doing nothing.";
+        return;
+    }
+    if (size > 8)
+    {
+        std::cout << "Size must be at least 4. Doing nothing.";
+        return;
+    }
+    board_size = size;
+
 }

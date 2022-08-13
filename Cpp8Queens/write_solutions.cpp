@@ -9,7 +9,7 @@
 using board_t = std::vector<std::string>;
 
 
-void write_solutions_to_html_table(const std::vector<board_t>& boards)
+void write_solutions_to_html_table(const std::vector<board_t>& boards, int board_size)
 {
     using std::vector;
     using std::string;
@@ -22,7 +22,7 @@ void write_solutions_to_html_table(const std::vector<board_t>& boards)
     const string str_empty{ "" };
 
     const int htm_width = 5;
-    ldiv_t groups = ldiv(boards.size(), htm_width);
+    ldiv_t groups = ldiv(static_cast<long>(boards.size()), htm_width);
     cout << endl << "<table class='vertical.center'><tbody>" << endl;
 
     for (int base = 0; base < boards.size(); base += htm_width)
@@ -34,12 +34,12 @@ void write_solutions_to_html_table(const std::vector<board_t>& boards)
         {
             indices.pop_back();
         }
-        for (int row = 0; row < 8; ++row)
+        for (int row = 0; row < board_size; ++row)
         {
             cout << "<tr>" << endl;
             for (int i_board : indices)
             {
-                for (int col = 0; col < 8; ++col)
+                for (int col = 0; col < board_size; ++col)
                 {
                     char c = boards[i_board][row][col];
                     int i_cell = (col + row) % 2;
@@ -55,12 +55,14 @@ void write_solutions_to_html_table(const std::vector<board_t>& boards)
 }
 
 
-void do_show_results(int failures_count, int success_count, const std::vector<std::vector<int>>& solutions)
+void do_show_results(int failures_count, int success_count, const std::vector<std::vector<int>>& solutions, int board_size)
 {
     using std::cout;
     using std::endl;
 
-    cout << "We had " << failures_count << " failures, and " << success_count << " solutions." << endl;
+    cout << "We had " << failures_count << " failures, and " << success_count 
+        << " solutions in a board of size " << board_size << " by " << board_size << "."
+        << endl;
 
     //if (!verbose)
     //    return;
@@ -68,6 +70,7 @@ void do_show_results(int failures_count, int success_count, const std::vector<st
     cout << "The solutions are: " << endl << endl;
     // Buld the displays
     std::vector<board_t> boards;
+    boards.reserve(success_count);
     for (const auto& result : solutions)
     {
         if (result[0] == -1)
@@ -76,11 +79,17 @@ void do_show_results(int failures_count, int success_count, const std::vector<st
         }
 
         board_t display = { "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-", "-+-+-+-+", "+-+-+-+-" };
-        for (int row = 0; row < result.size(); ++row)
+        display.resize(board_size); // Chop off the needless ones.
+        for (int row = 0; row < board_size; ++row)
         {
+            display[row].resize(board_size); // Cut redundant part. 
             display[row][result[row]] = 'Q';
         }
         boards.push_back(display);
+        if (boards.size() == success_count)
+        {
+            break;
+        }
     }
 
     const int line_width = 9;
@@ -94,11 +103,11 @@ void do_show_results(int failures_count, int success_count, const std::vector<st
         {
             indices.pop_back();
         }
-        for (int row = 0; row < 8; ++row)
+        for (int row = 0; row < board_size; ++row)
         {
             for (int i_board : indices)
             {
-                cout << boards[i_board][row] << separator;
+                cout << (boards[i_board][row]) << separator;
             }
             cout << endl;
         }
@@ -106,7 +115,7 @@ void do_show_results(int failures_count, int success_count, const std::vector<st
     }
 // #define SHOW_CHESS_HTML_BOARDS
 #ifdef SHOW_CHESS_HTML_BOARDS
-    write_solutions_to_html_table(boards);
+    write_solutions_to_html_table(boards, board_size);
 #endif
 }
 

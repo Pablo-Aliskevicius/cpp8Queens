@@ -8,5 +8,6 @@ namespace qns
     void set_verbose(bool new_val);
     void set_short(int trials);
     void test();
+    void set_board_size(int size);
     
 }

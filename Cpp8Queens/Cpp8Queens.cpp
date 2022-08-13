@@ -51,8 +51,11 @@ int main(int argc, const char** argv)
         qns::test();
         return 0;
     }
-
-    qns::solve();
+    for (int desired_board_size = 4; desired_board_size < 9; ++desired_board_size)
+    {
+        qns::set_board_size(desired_board_size);
+        qns::solve();
+    }
 
     return 0;
 }
