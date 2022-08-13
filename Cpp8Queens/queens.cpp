@@ -11,7 +11,7 @@
 using flags_t = uint_fast64_t;
 using map_t = flags_t;
 
-static std::vector<std::vector<int>> solutions(46, std::vector<int>(8, -1));
+static std::vector<std::vector<int>> solutions(46, std::vector<int>(8, -1)); // use 46 if optimizing for symmetry.
 static uint_fast16_t failures_count = 0; // up to 20'160 = 4 * 7!
 static uint_fast16_t success_count = 0; // up to 20'160 = 4 * 7!
 static bool verbose = false;
@@ -355,9 +355,9 @@ void qns::solve()
     std::vector<int> solution(maximum_allowed_board_size, -1);
     const int loops = 1000;
     const int starting_rows_to_test = (board_size / 2) + (board_size % 2);
-    unsigned long long max_time = 0ULL;
-    unsigned long long min_time = ~0ULL;
-    unsigned long long tot_time = 0ULL;
+    hi_res_timer::microsecs_t max_time = 0ULL;
+    hi_res_timer::microsecs_t min_time = std::numeric_limits<hi_res_timer::microsecs_t>::max();
+    hi_res_timer::microsecs_t tot_time = 0ULL;
 
 
     for (int loop = 0; loop < loops; ++loop)

@@ -1,5 +1,4 @@
-#ifdef _MSC_VER // or _MSC_VER < 1930, depending...
-
+#ifdef USE_WINAPI_FOR_8QUEENS_TIMER
 /*
 
 From https://docs.microsoft.com/en-us/windows/win32/sysinfo/acquiring-high-resolution-time-stamps#examples-for-acquiring-time-stamps
@@ -42,7 +41,7 @@ public:
 		ElapsedMicroseconds.QuadPart *= 1000000;
 		ElapsedMicroseconds.QuadPart /= Frequency.QuadPart;
 	}
-	long long GetElapsedMicroseconds() const
+	microsecs_t GetElapsedMicroseconds() const
 	{
 		return ElapsedMicroseconds.QuadPart;
 	}
@@ -62,12 +61,12 @@ public:
 	void Stop()
 	{
 		const auto end_ = Clock::now();
-		using std::chrono::microseconds;
+		using std::chrono::nanoseconds;
 		using std::chrono::duration_cast;
-		auto ns = duration_cast<microseconds>(end_ - m_begin);
-		m_duration = ns.count();
+		auto ns = duration_cast<nanoseconds>(end_ - m_begin);
+		m_duration = double(ns.count()) / 1000.0;
 	}
-	long long GetElapsedMicroseconds() const
+	microsecs_t GetElapsedMicroseconds() const
 	{
 		return m_duration;
 	}
@@ -92,7 +91,7 @@ void hi_res_timer::Stop()
 	running = false;
 }
 
-long long hi_res_timer::GetElapsedMicroseconds()
+hi_res_timer::microsecs_t hi_res_timer::GetElapsedMicroseconds()
 {
 	if (running)
 	{

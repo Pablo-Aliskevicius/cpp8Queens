@@ -49,9 +49,9 @@ void write_solutions_to_html_table(const std::vector<board_t>& boards, int board
             }
             cout << "</tr>" << endl;
         }
-        cout << "<tr><td class='cell' /></tr>" << endl; // Separation between rows of boards.
+        cout << "<tr><td class='cell' /></tr>" << endl; // Separation between rows of boards: height of cell.
     }
-    cout << endl << "</tbody></table>" << endl;
+    cout << "</tbody></table>" << endl << endl;
 }
 
 
@@ -107,7 +107,7 @@ void do_show_results(int failures_count, int success_count, const std::vector<st
         {
             for (int i_board : indices)
             {
-                cout << (boards[i_board][row]) << separator;
+                cout << boards[i_board][row] << separator;
             }
             cout << endl;
         }
@@ -115,6 +115,9 @@ void do_show_results(int failures_count, int success_count, const std::vector<st
     }
 // #define SHOW_CHESS_HTML_BOARDS
 #ifdef SHOW_CHESS_HTML_BOARDS
+    cout << "<p>We had " << failures_count << " failures, and " << success_count
+        << " solutions in a board of size " << board_size << " by " << board_size << ".</p>"
+        << endl;
     write_solutions_to_html_table(boards, board_size);
 #endif
 }

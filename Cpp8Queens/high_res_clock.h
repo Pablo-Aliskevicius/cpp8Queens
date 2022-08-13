@@ -1,7 +1,3 @@
-#include <memory>
-
-// From https://docs.microsoft.com/en-us/windows/win32/sysinfo/acquiring-high-resolution-time-stamps#examples-for-acquiring-time-stamps
-// Unfortunately, std::chrono::high_resolution_clock is low-resolution for some versions of Visual C++.
 class hi_res_timer
 {
 	class TimerData; // forward declaration
@@ -11,10 +7,11 @@ public:
 	hi_res_timer();
 	~hi_res_timer();
 	void Stop();
-	long long GetElapsedMicroseconds();
+#if _MSC_VER < 1930 // or if def _MSC_VER, depending...
+	using microsecs_t = long long;
+#define USE_WINAPI_FOR_8QUEENS_TIMER
+#else 
+	using microsecs_t = double;
+#endif 
+	microsecs_t GetElapsedMicroseconds();
 };
-
-
-
-
-

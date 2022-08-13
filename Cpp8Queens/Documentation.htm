@@ -90,6 +90,98 @@
         <li>For fun, I used template metaprogramming to generate at compile time the 'threatening masks' for all 64 positions in the board.</li>
         <li>To find out which rows are not threatened in a column, we AND it with the corresponding mask, and go over all 8 bytes - zeros are good.</li>
     </ul>
+    <p>So, threats look like this:</p>
+    <table><tbody>
+    <tr>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'></td>
+        <td class='wide cell' >0x22</td>
+    </tr>
+    <tr>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'></td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='wide cell'>0x14&lt;&lt;8</td>
+    </tr>
+    <tr>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'>&#x2639;</td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'>&#x2639;</td>
+        <td class='yellow cell'>&#9819;</td>
+        <td class='black cell'>&#x2639;</td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'>&#x2639;</td>
+        <td class='wide cell'>0xFF&lt;&lt;16</td>
+    </tr>
+    <tr>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'></td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='wide cell'>0x14&lt;&lt;24</td>
+    </tr>
+    <tr>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'></td>
+        <td class='wide cell'>0x22&lt;&lt;32</td>
+    </tr>
+    <tr>
+        <td class='black cell'></td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='wide cell'>0x41&lt;&lt;40</td>
+    </tr>
+    <tr>
+        <td class='yellow cell'>&#x2639;</td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='wide cell'>0x80&lt;&lt;48</td>
+    </tr>
+    <tr>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='black cell'></td>
+        <td class='yellow cell'></td>
+        <td class='wide cell'>0x00&lt;&lt;56</td>
+    </tr>
+</tbody></table>
+    <p>Please remember, the entire board is a single 64-bit unsigned integer.</p>
     <p>
         It's also generalized for boards smaller than 8 by 8, down to 4x4 (smallest with a solution).<br />
         To generalize to bigger numbers (all the way up to 22x22), you need to use Intel Intrinsics and a CPU that supports AVX512. Mine doesn't.
