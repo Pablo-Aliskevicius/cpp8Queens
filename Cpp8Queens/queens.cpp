@@ -353,7 +353,12 @@ void qns::solve()
     // On the other hand, chess boards have 64 squares.
     // solutions.reserve(46); // Cheating? Nope, just using prior knowledge.
     std::vector<int> solution(maximum_allowed_board_size, -1);
+#ifdef DEBUG
+    const int loops = 1;
+#else
     const int loops = 1000;
+#endif // DEBUG
+
     const int starting_rows_to_test = (board_size / 2) + (board_size % 2);
     hi_res_timer::microsecs_t max_time = 0ULL;
     hi_res_timer::microsecs_t min_time = std::numeric_limits<hi_res_timer::microsecs_t>::max();
@@ -385,6 +390,10 @@ void qns::solve()
     std::cout << "The fastest run took " << min_time << " microseconds, the slowest took " << max_time
         << ", and an average of " << loops << " runs was " << double(tot_time) / loops << std::endl;
     do_show_results(failures_count, success_count, solutions, board_size);
+    if (success_count < solutions.size())
+    {
+        solutions[success_count][0] = sentinel;
+    }
 }
 #else
 void qns::solve()
