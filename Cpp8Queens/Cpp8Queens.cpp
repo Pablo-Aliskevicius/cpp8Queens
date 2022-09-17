@@ -5,6 +5,7 @@
 #include <ctype.h>
 
 #include "queens.h"
+#include "sixteen_queens.h"
 
 /*
 Command line arguments:
@@ -49,12 +50,20 @@ int main(int argc, const char** argv)
     if (test)
     {
         qns::test();
+        qns16::test();
         return 0;
     }
     for (int desired_board_size = 4; desired_board_size < 9; ++desired_board_size)
     {
         qns::set_board_size(desired_board_size);
         qns::solve();
+    }
+
+    for (int desired_board_size = 6; desired_board_size < 16 /* TODO: 17 (run up to 16) */; ++desired_board_size)
+    {
+        // TODO: Support sizes 4 to 15, to compare solutions and performance.
+        qns16::set_board_size(desired_board_size);
+        qns16::solve();
     }
 
     return 0;

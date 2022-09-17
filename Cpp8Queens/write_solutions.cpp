@@ -6,7 +6,6 @@
 #include <immintrin.h>  // Using intel intrinsics to learn about it. Precondition: you need AVX2 at least (which you probably have).
 
 #include "write_solutions.h"
-#include <algorithm>
 
 using board_t = std::vector<std::string>;
 using solutions_t = std::vector<std::vector<int>>;
@@ -59,13 +58,33 @@ void write_solutions_to_html_table(const std::vector<board_t>& boards, int board
 solutions_t fill_solutions(const std::vector<std::vector<int>>& solutions, int success_count, int board_size)
 {
     solutions_t full_solutions;
-    full_solutions.reserve(success_count * 2);
+    size_t available_solutions = std::min(solutions.size(), size_t(success_count));
+    full_solutions.reserve(available_solutions * 2);
     std::copy(solutions.cbegin(),
-        solutions.cbegin() + success_count,
+        solutions.cbegin() + available_solutions,
         std::back_inserter(full_solutions));
     solutions_t::value_type subtract_parent(board_size, board_size - 1); // e.g., 8 sevens
     const int middle_row = (board_size / 2);
-    for (auto it = solutions.crend() - success_count; it != solutions.crend(); ++it)
+
+    auto sub_256 = [&](int start_offset, int* solution_data, int* symmetric_solution_data) {
+        // Subtract 8 32-bit integers in 1 fell swoop, using the AVX2 instruction set. In every 
+        // Intel machine for a lot of years now  (since the Haswell processor, back in 2013). 
+        // __m256i _mm256_sub_epi64(__m256i a, __m256i b)
+        __m256i* pA = reinterpret_cast<__m256i*>(subtract_parent.data() + start_offset);
+        __m256i* pB = reinterpret_cast<__m256i*>(solution_data);
+        __m256i* pC = reinterpret_cast<__m256i*>(symmetric_solution_data);
+        *pC = _mm256_sub_epi64(*pA, *pB);
+    };
+    auto sub_128 = [&](int start_offset, int* solution_data, int* symmetric_solution_data) {
+        // Subtract 4 integers in 1 fell swoop, using the good old SSE2 instruction set.
+        // __m128i _mm_sub_epi32(__m128i a, __m128i b)
+        __m128i* pA = reinterpret_cast<__m128i*>(subtract_parent.data());
+        __m128i* pB = reinterpret_cast<__m128i*>(solution_data);
+        __m128i* pC = reinterpret_cast<__m128i*>(symmetric_solution_data);
+        *pC = _mm_sub_epi32(*pA, *pB);
+    };
+
+    for (auto it = solutions.crend() - available_solutions; it != solutions.crend(); ++it)
     {
         const auto& solution = *it;
         if (solution[0] == middle_row)
@@ -77,17 +96,26 @@ solutions_t fill_solutions(const std::vector<std::vector<int>>& solutions, int s
 
         switch (board_size)
         {
-        case 8:
-        {
-            // Subtract 16 integers in 1 fell swoop, using the AVX2 instruction set. In every Intel machine for a lot of years now 
-            // (since the Haswell processor, back in 2013). 
-            // __m256i _mm256_sub_epi64(__m256i a, __m256i b)
-            __m256i* pA = reinterpret_cast<__m256i*>(subtract_parent.data());
-            __m256i* pB = reinterpret_cast<__m256i*>(const_cast<int*>(solution.data()));
-            __m256i* pC = reinterpret_cast<__m256i*>(symmetric_solution.data());
-            *pC = _mm256_sub_epi64(*pA, *pB);
-        }
+        case 16:
+        case 15:
+        case 14:
+        case 13:
+            sub_256(0, const_cast<int*>(solution.data()), symmetric_solution.data());
+            sub_256(board_size - 8, const_cast<int*>(solution.data()), symmetric_solution.data());
             break;
+
+        case 12:
+        case 11:
+        case 10:
+        case 9:
+            sub_256(0, const_cast<int*>(solution.data()), symmetric_solution.data());
+            sub_128(board_size - 4, const_cast<int*>(solution.data()), symmetric_solution.data());
+            break;
+
+        case 8:
+            sub_256(0, const_cast<int*>(solution.data()), symmetric_solution.data());
+            break;
+
         case 7:
             symmetric_solution[6] = subtract_parent[6] - solution[6];
             // fall through on purpose
@@ -95,21 +123,14 @@ solutions_t fill_solutions(const std::vector<std::vector<int>>& solutions, int s
             symmetric_solution[5] = subtract_parent[5] - solution[5];
         case 5:
             symmetric_solution[4] = subtract_parent[4] - solution[4];
-        case 4: // Use 128-bit SSE intrinsics
-        {
-            // Subtract 4 integers in 1 fell swoop, using the good old SSE2 instruction set.
-            // __m128i _mm_sub_epi32(__m128i a, __m128i b)
-            __m128i* pA = reinterpret_cast<__m128i*>(subtract_parent.data());
-            __m128i* pB = reinterpret_cast<__m128i*>(const_cast<int*>(solution.data()));
-            __m128i* pC = reinterpret_cast<__m128i*>(symmetric_solution.data());
-            *pC = _mm_sub_epi32(*pA, *pB);
-        }
+        case 4: 
+            sub_128(0, const_cast<int*>(solution.data()), symmetric_solution.data());
             break;
+
         default:
-            // TODO: Throw some kind of exception.
             std::cerr << "Invalid board size: should be in the range [4, 8] but it is " << board_size << std::endl;
             throw std::invalid_argument("At the moment, the board size should be between 4 and 8.");
-        }
+        } // switch
 
         full_solutions.push_back(symmetric_solution);
     }
@@ -117,7 +138,7 @@ solutions_t fill_solutions(const std::vector<std::vector<int>>& solutions, int s
     return full_solutions;
 }
 
-std::vector<board_t> fill_boards(const solutions_t& full_solutions, int board_size)
+std::vector<board_t> fill_boards_8(const solutions_t& full_solutions, int board_size)
 {
     // Buld the displays
     std::vector<board_t> boards;
@@ -146,6 +167,51 @@ std::vector<board_t> fill_boards(const solutions_t& full_solutions, int board_si
 }
 
 
+std::vector<board_t> fill_boards_16(const solutions_t& full_solutions, int board_size)
+{
+    // Buld the displays
+    std::vector<board_t> boards;
+    boards.reserve(full_solutions.size());
+    for (const auto& result : full_solutions)
+    {
+        if (result[0] == -1)
+        {
+            return boards;
+        }
+        // Board size must be 16 at most. 
+        board_t display = { 
+            "-+-+-+-+-+-+-+-+",
+            "+-+-+-+-+-+-+-+-",
+            "-+-+-+-+-+-+-+-+",
+            "+-+-+-+-+-+-+-+-",
+            "-+-+-+-+-+-+-+-+",
+            "+-+-+-+-+-+-+-+-",
+            "-+-+-+-+-+-+-+-+",
+            "+-+-+-+-+-+-+-+-",
+            "-+-+-+-+-+-+-+-+",
+            "+-+-+-+-+-+-+-+-",
+            "-+-+-+-+-+-+-+-+",
+            "+-+-+-+-+-+-+-+-",
+            "-+-+-+-+-+-+-+-+",
+            "+-+-+-+-+-+-+-+-",
+            "-+-+-+-+-+-+-+-+",
+            "+-+-+-+-+-+-+-+-",
+        };
+        display.resize(board_size); // Chop off the needless ones.
+        for (int row = 0; row < board_size; ++row)
+        {
+            display[row].resize(board_size); // Cut redundant part. 
+            if (result[row] == -1)
+            {
+                return boards;
+            }
+            display[row][result[row]] = 'Q';
+        }
+        boards.push_back(display);
+    }
+    return boards;
+}
+
 void do_show_results(int failures_count, int success_count, const std::vector<std::vector<int>>& solutions, int board_size)
 {
     using std::cout;
@@ -158,9 +224,17 @@ void do_show_results(int failures_count, int success_count, const std::vector<st
         << ") in a board of size " << board_size << " by " << board_size << "."
         << endl;
 
-    cout << "The solutions are: " << endl << endl;
+    cout << "The ";
+    if (success_count > solutions.size())
+    {
+        cout << "first " << solutions.size(); // For 15x51, there are millions; showing a tiny fraction.
+    }
+    cout << " solutions are: " << endl << endl;
     // Buld the displays
-    std::vector<board_t> boards = fill_boards(full_solutions, board_size);
+    std::vector<board_t> boards =
+        board_size < 9 ?
+        fill_boards_8(full_solutions, board_size) :
+        fill_boards_16(full_solutions, board_size);
 
     const int line_width = 9;
     const std::string separator{ "    " };
