@@ -1,6 +1,7 @@
 #include <iostream>
 #include <numeric>  // for std::iota
 #include <vector>
+#include <set>
 #include <string>
 
 #include <immintrin.h>  // Using intel intrinsics to learn about it. Precondition: you need AVX2 at least (which you probably have).
@@ -55,7 +56,7 @@ void write_solutions_to_html_table(const std::vector<board_t>& boards, int board
     cout << "</tbody></table>" << endl << endl;
 }
 
-solutions_t fill_solutions(const std::vector<std::vector<int>>& solutions, int success_count, int board_size)
+solutions_t fill_solutions(const std::vector<std::vector<int>>& solutions, size_t success_count, int board_size)
 {
     solutions_t full_solutions;
     size_t available_solutions = std::min(solutions.size(), size_t(success_count));
@@ -212,7 +213,7 @@ std::vector<board_t> fill_boards_16(const solutions_t& full_solutions, int board
     return boards;
 }
 
-void do_show_results(int failures_count, int success_count, const std::vector<std::vector<int>>& solutions, int board_size)
+void do_show_results(unsigned long long failures_count, unsigned long long success_count, const std::vector<std::vector<int>>& solutions, int board_size)
 {
     using std::cout;
     using std::endl;
@@ -220,16 +221,41 @@ void do_show_results(int failures_count, int success_count, const std::vector<st
     solutions_t full_solutions = fill_solutions(solutions, success_count, board_size);
 
     cout << "We had " << failures_count << " failures, and " << success_count
-        << " solutions (filled by symmetry to " << full_solutions.size()
-        << ") in a board of size " << board_size << " by " << board_size << "."
+        << " solutions (" 
+        << ((full_solutions.size() > success_count) ? "filled by symmetry to ": "showing only ")
+        << full_solutions.size()
+        << ") in half a board of size " << board_size << " by " << board_size << "."
         << endl;
 
     cout << "The ";
     if (success_count > solutions.size())
     {
-        cout << "first " << solutions.size(); // For 15x51, there are millions; showing a tiny fraction.
+        cout << "chosen " << full_solutions.size(); // For 15x15, there are millions; showing a tiny fraction.
     }
     cout << " solutions are: " << endl << endl;
+
+#ifdef _DEBUG
+    for (const auto& solution : solutions)
+    {
+        std::set<int> uniques;
+        for (auto row : solution)
+        {
+            if (row == -1)
+            {
+                break;
+            }
+            cout << std::hex << row << ",";
+            uniques.insert(row);
+        }
+        if (uniques.size() < board_size)
+        {
+            cout << " ******************";
+        }
+        cout << endl << endl;
+    }
+
+#endif // def _DEBUG
+
     // Buld the displays
     std::vector<board_t> boards =
         board_size < 9 ?
@@ -259,10 +285,34 @@ void do_show_results(int failures_count, int success_count, const std::vector<st
     }
 // #define SHOW_CHESS_HTML_BOARDS
 #ifdef SHOW_CHESS_HTML_BOARDS
-    cout << "<p>We had " << failures_count << " failures, and " << success_count
-        << " solutions in a board of size " << board_size << " by " << board_size << ".</p>"
-        << endl;
-    write_solutions_to_html_table(boards, board_size);
+    // Tested only for 8x8
+    if (board_size == 8)
+    {
+        write_solutions_to_html_table(boards, board_size);
+    }
 #endif
 }
 
+void do_show_map(__m256i* pMap, int board_size)
+{
+    std::cout << __FUNCTION__ << std::endl;
+    for (int row = 0; row < board_size; ++row)
+    {
+        auto row_flags = pMap->m256i_u16[row];
+        //                  01234567890123456
+        // Yes, initializing again and again inside the loop.
+        char human_row[] = "+-+-+-+-+-+-+-+-+";
+        char* pOutput = human_row + row % 2;
+        for (int col = 0; col < board_size; ++col)
+        {
+            unsigned short bit = 1 << (15 - col);
+            if (row_flags & bit)
+            {
+                pOutput[col] = '*';
+            }
+        }
+        // It will look rugged at the right side. I don't care.
+        std::cout << pOutput << " 0x" << std::hex << row_flags << std::endl;
+    }
+    std::cout << std::endl;
+}

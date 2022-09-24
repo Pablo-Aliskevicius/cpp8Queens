@@ -59,9 +59,8 @@ int main(int argc, const char** argv)
         qns::solve();
     }
 
-    for (int desired_board_size = 6; desired_board_size < 16 /* TODO: 17 (run up to 16) */; ++desired_board_size)
+    for (int desired_board_size = 6; desired_board_size < 17; ++desired_board_size)
     {
-        // TODO: Support sizes 4 to 15, to compare solutions and performance.
         qns16::set_board_size(desired_board_size);
         qns16::solve();
     }
