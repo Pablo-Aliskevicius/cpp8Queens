@@ -1,10 +1,9 @@
 #pragma once
 
 // sixteen_queens.h
-// Solution for 16x16
+// Solution for 16x16, using AVX2 to improve performance (by about 40%)
 
-
-namespace qns16
+namespace qns16avx2
 {
     void solve();
     void set_verbose(bool new_val);

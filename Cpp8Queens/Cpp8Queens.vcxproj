@@ -104,13 +104,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>"$(TargetPath)" -t</Command>
+      <Command>rem "$(TargetPath)" -t</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Testing...</Message>
@@ -126,6 +127,9 @@
       <ConformanceMode>true</ConformanceMode>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,12 +147,22 @@
   <ItemGroup>
     <ClCompile Include="Cpp8Queens.cpp" />
     <ClCompile Include="high_res_clock.cpp" />
+    <ClCompile Include="InstructionSet.cpp" />
     <ClCompile Include="queens.cpp" />
+    <ClCompile Include="sixteen_queens.cpp">
+      <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AssemblyAndSourceCode</AssemblerOutput>
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+    </ClCompile>
+    <ClCompile Include="sixteen_queens_avx2.cpp" />
+    <ClCompile Include="sixteen_queens_common.cpp" />
     <ClCompile Include="write_solutions.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="high_res_clock.h" />
     <ClInclude Include="queens.h" />
+    <ClInclude Include="sixteen_queens.h" />
+    <ClInclude Include="sixteen_queens_avx2.h" />
+    <ClInclude Include="sixteen_queens_common.h" />
     <ClInclude Include="write_solutions.h" />
   </ItemGroup>
   <ItemGroup>

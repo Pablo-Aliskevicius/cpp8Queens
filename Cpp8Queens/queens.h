@@ -1,3 +1,5 @@
+#pragma once
+
 // queens.h
 // Solution for 8x8 board. Same as any board I've ever seen
 

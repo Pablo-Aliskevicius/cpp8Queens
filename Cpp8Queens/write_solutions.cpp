@@ -59,7 +59,7 @@ void write_solutions_to_html_table(const std::vector<board_t>& boards, int board
 solutions_t fill_solutions(const std::vector<std::vector<int>>& solutions, size_t success_count, int board_size)
 {
     solutions_t full_solutions;
-    size_t available_solutions = std::min(solutions.size(), size_t(success_count));
+    size_t available_solutions = std::min(solutions.size(), success_count);
     full_solutions.reserve(available_solutions * 2);
     std::copy(solutions.cbegin(),
         solutions.cbegin() + available_solutions,
@@ -247,7 +247,7 @@ void do_show_results(unsigned long long failures_count, unsigned long long succe
             cout << std::hex << row << ",";
             uniques.insert(row);
         }
-        if (uniques.size() < board_size)
+        if (uniques.size() < board_size && !uniques.empty())
         {
             cout << " ******************";
         }

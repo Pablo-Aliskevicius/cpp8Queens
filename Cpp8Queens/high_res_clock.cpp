@@ -43,7 +43,7 @@ public:
 	}
 	microsecs_t GetElapsedMicroseconds() const
 	{
-		return ElapsedMicroseconds.QuadPart;
+		return microsecs_t(ElapsedMicroseconds.QuadPart);
 	}
 
 };
@@ -55,7 +55,7 @@ class hi_res_timer::TimerData
 {
 	using Clock = std::chrono::high_resolution_clock;
 	const Clock::time_point m_begin = Clock::now();
-	long long m_duration = -1LL;
+	microsecs_t m_duration = (microsecs_t)  - 1;
 public:
 	TimerData() = default;
 	void Stop()
@@ -64,11 +64,11 @@ public:
 		using std::chrono::nanoseconds;
 		using std::chrono::duration_cast;
 		auto ns = duration_cast<nanoseconds>(end_ - m_begin);
-		m_duration = double(ns.count()) / 1000.0;
+		m_duration = microsecs_t(double(ns.count()) / 1000.0);
 	}
 	microsecs_t GetElapsedMicroseconds() const
 	{
-		return m_duration;
+		return microsecs_t(m_duration);
 	}
 };
 

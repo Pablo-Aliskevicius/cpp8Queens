@@ -4,8 +4,12 @@
 #include <iostream>
 #include <ctype.h>
 
+#include <immintrin.h>
+
 #include "queens.h"
+#include "sixteen_queens_common.h"
 #include "sixteen_queens.h"
+#include "sixteen_queens_avx2.h"
 
 /*
 Command line arguments:
@@ -50,7 +54,9 @@ int main(int argc, const char** argv)
     if (test)
     {
         qns::test();
+        qns16cmn::test();
         qns16::test();
+        qns16avx2::test();
         return 0;
     }
     for (int desired_board_size = 4; desired_board_size < 9; ++desired_board_size)
@@ -59,10 +65,25 @@ int main(int argc, const char** argv)
         qns::solve();
     }
 
-    for (int desired_board_size = 6; desired_board_size < 17; ++desired_board_size)
+    for (int desired_board_size = 4; desired_board_size < 17; ++desired_board_size)
     {
         qns16::set_board_size(desired_board_size);
         qns16::solve();
+    }
+
+    // Don't feel like adding a header just to declare two functions.
+    extern bool avx2_supported();
+    extern void print_out_instruction_sets();
+
+    print_out_instruction_sets();
+
+    if (avx2_supported())
+    {
+        for (int desired_board_size = 4; desired_board_size < 17; ++desired_board_size)
+        {
+            qns16avx2::set_board_size(desired_board_size);
+            qns16avx2::solve();
+        }
     }
 
     return 0;

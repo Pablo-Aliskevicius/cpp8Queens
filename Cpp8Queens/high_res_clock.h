@@ -1,3 +1,5 @@
+#pragma once
+
 class hi_res_timer
 {
 	class TimerData; // forward declaration
