@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{065846d9-4cb2-4933-b109-aac25c142faa}</ProjectGuid>
-    <RootNamespace>Cpp8Queens</RootNamespace>
+    <ProjectGuid>{1cfc9609-a5df-4e62-92de-eb3b4f7aa340}</ProjectGuid>
+    <RootNamespace>DraftingBoard</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -104,18 +104,11 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>rem "$(TargetPath)" -t</Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
-      <Message>Testing...</Message>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -125,11 +118,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <FloatingPointModel>Fast</FloatingPointModel>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -137,41 +125,9 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>"$(TargetPath)"</Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
-      <Message>Testing...</Message>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Cpp8Queens.cpp" />
-    <ClCompile Include="high_res_clock.cpp" />
-    <ClCompile Include="InstructionSet.cpp" />
-    <ClCompile Include="queens.cpp" />
-    <ClCompile Include="sixteen_queens.cpp">
-      <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AssemblyAndSourceCode</AssemblerOutput>
-      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-    </ClCompile>
-    <ClCompile Include="sixteen_queens_avx2.cpp" />
-    <ClCompile Include="sixteen_queens_avx2_mt.cpp" />
-    <ClCompile Include="sixteen_queens_common.cpp" />
-    <ClCompile Include="write_solutions.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="high_res_clock.h" />
-    <ClInclude Include="queens.h" />
-    <ClInclude Include="sixteen_queens.h" />
-    <ClInclude Include="sixteen_queens_avx2.h" />
-    <ClInclude Include="sixteen_queens_avx2_mt.h" />
-    <ClInclude Include="sixteen_queens_common.h" />
-    <ClInclude Include="thread_pool.h" />
-    <ClInclude Include="write_solutions.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Documentation.htm">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
+    <ClCompile Include="DraftingBoard.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

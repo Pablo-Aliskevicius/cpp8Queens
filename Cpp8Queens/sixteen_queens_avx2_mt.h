@@ -1,15 +1,12 @@
 #pragma once
 
-// queens.h
-// Solution for 8x8 board. Same as any board I've ever seen
+// sixteen_queens_avx2_mt.h
+// Solution for 16x16, using AVX2 to improve performance (by about 40%)
 
-
-namespace qns
+namespace qns16avx2mt
 {
     double solve(); // returns average microseconds
     void set_verbose(bool new_val);
-    void set_short(int trials);
     void test();
     void set_board_size(int size);
-    
 }
