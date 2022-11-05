@@ -156,10 +156,13 @@ namespace qns16cmn
     const int max_solutions_to_show = 50;
     std::vector<std::vector<int>> solutions(max_solutions_to_show, std::vector<int>(16, -1));
 
-
     const std::vector<int>& not_threatened_rows(const map_t& map, int board_size, int current_column)
     {
-        std::vector<int>& result = safe_indices[current_column];
+        return not_threatened_rows_mt(map, board_size, current_column, safe_indices[current_column]);
+    }
+
+    const std::vector<int>& not_threatened_rows_mt(const map_t& map, int board_size, int current_column, std::vector<int>& result)
+    {
         // PRECONDITION: MASK BEFORE CALLING! const map_t mask = (map & column_masks[current_column]);
         // One 64-bit integer == 8 chars.
         const unsigned short* pRow = map.m256i_u16;

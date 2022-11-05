@@ -90,11 +90,11 @@ namespace qns16
 			make_threat(15, 0), make_threat(15, 1), make_threat(15, 2), make_threat(15, 3), make_threat(15, 4), make_threat(15, 5), make_threat(15, 6), make_threat(15, 7), make_threat(15, 8), make_threat(15, 9), make_threat(15, 10), make_threat(15, 11), make_threat(15, 12), make_threat(15, 13), make_threat(15, 14), make_threat(15, 15),
 	};
 
-	inline const map_t&& threaten(const map_t& map, int row, int col)
+	inline const map_t threaten(const map_t& map, int row, int col)
 	{
 		// Equivalent to this:
 		// return (map | row_masks[row] | main_diagonal_parallels[row + 15 - column] | second_diagonal_parallels[row + column]);
-		return std::move(map | threats[(size_t)(row * maximum_allowed_board_size + col)]);
+		return map | threats[(size_t)(row * maximum_allowed_board_size + col)];
 	}
 
 	// map by value, because it't not const. 
@@ -135,7 +135,7 @@ namespace qns16
 		solution[next_column] = -1;
 	} // void do_solve(map_t map, std::vector<int>& solution, int current_column)
 
-	void solve()
+	double solve()
 	{
 		failures_count = 0ULL;
 		success_count = 0ULL;
@@ -203,6 +203,8 @@ namespace qns16
 		}
 		do_show_results(failures_count, success_count, solutions, board_size);
 		std::cout.flush();
+
+		return double(average_time);
 	}
 
 	void solve_once()

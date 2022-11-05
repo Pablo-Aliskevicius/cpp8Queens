@@ -21,6 +21,8 @@ namespace qns16cmn
     extern std::vector<std::vector<int>> solutions;
 
     const std::vector<int>& not_threatened_rows(const map_t& map, int board_size, int current_column);
+    // Multi threading support: no globals.
+    const std::vector<int>& not_threatened_rows_mt(const map_t& map, int board_size, int current_column, std::vector<int>& result);
 #ifdef _DEBUG
     namespace dbg
     {

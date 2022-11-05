@@ -4,18 +4,20 @@
 #include <cstdint>
 #include <iostream>
 #include <iomanip>
+// #include <thread>
 #include <vector>
 
 #include <immintrin.h>  // Using intel intrinsics to learn about it. Precondition: you need AVX2 at least (which you probably have).
 
 #include "sixteen_queens_common.h"
-#include "sixteen_queens_avx2.h"
+#include "sixteen_queens_avx2_mt.h"
 #include "high_res_clock.h"
 #include "write_solutions.h"
+#include "thread_pool.h"
 
 using namespace qns16cmn;
 
-namespace qns16avx2
+namespace qns16avx2mt
 {
     using m256i = ::__m256i;
 
@@ -46,11 +48,53 @@ namespace qns16avx2
     // =====
     // From https://en.wikipedia.org/wiki/Eight_queens_puzzle#Counting_solutions_for_other_sizes_n
     // There are 14,772,512 solutions for n = 16, should get half of that. We'll just count them (expected 7'386'256), not build them.
+    uint_fast32_t failures_count = 0;  // total for all threads
+    uint_fast32_t success_count = 0; // total for all threads
+    bool verbose = false;
+    int board_size = maximum_allowed_board_size; // Supported sizes: 4 - 16
 
-    static uint_fast32_t failures_count = 0;
-    static uint_fast32_t success_count = 0;
-    static bool verbose = false;
-    static int board_size = maximum_allowed_board_size; // Supported sizes: 4 - 16
+    struct thread_data
+    {
+        uint_fast32_t failures_count = 0;
+        uint_fast32_t success_count = 0;
+        // We save first 12 per thread.
+        std::vector<std::vector<int>> solutions{
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+        };
+        std::vector<std::vector<int>> safe_indices{
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+            std::vector<int>(16, sentinel),
+        };
+        std::vector<int> solution;
+        thread_data(): solution(maximum_allowed_board_size, sentinel)
+        {
+        }
+    };
 
     inline bool is_totally_under_threat(const map_t& map, int current_column)
     {
@@ -107,35 +151,26 @@ namespace qns16avx2
     static const Threats threats;
 
     // map by value, because it't not const. 
-    void do_solve(const map_t& map, std::vector<int>& solution, int current_column)
+    void do_solve(const map_t& map, std::vector<int>& solution, int current_column, thread_data &td)
     {
         const int next_column = 1 + current_column;
         if (next_column == board_size)
         {
             // Success! Copy the solution. Don't move, we still need the buffer.
-            if (success_count < solutions.size())
+            if (td.success_count < td.solutions.size())
             {
                 // TODO: USE AVX2 OR MEMCPY TO COPY THE DATA. 
                 // INVARIANT: The destination has 16 integers, and the source has board_size.
-                std::copy(solution.cbegin(), solution.cend(), solutions[success_count].begin());
+                std::copy(solution.cbegin(), solution.cend(), td.solutions[td.success_count].begin());
             }
-            ++success_count;
-#ifdef _DEBUG
-            if ((success_count & 0xff) == 0x7ff)
-            {
-                std::cout 
-                    << "    (So far " << std::dec << success_count << " solutions and " 
-                    << failures_count << " failures.)" << std::endl;
-                std::cout.flush();
-            }
-#endif // _DEBUG
+            ++td.success_count;
             return;
         }
 
         const map_t new_map = threats.Threaten(map, solution[current_column], current_column);
         if (is_totally_under_threat(new_map, next_column))
         {
-            ++failures_count;
+            ++td.failures_count;
             return;
         }
 
@@ -150,10 +185,10 @@ namespace qns16avx2
             solution[next_column] = current_row;
 
             // Call recursively
-            do_solve(new_map, solution, next_column);
+            do_solve(new_map, solution, next_column, td);
         }
 #else
-        for (auto current_row : not_threatened_rows(new_map& column_masks[next_column], board_size, next_column))
+        for (auto current_row : not_threatened_rows_mt(new_map & column_masks[next_column], board_size, next_column, td.safe_indices[next_column]))
         {
             if (sentinel == current_row)
             {
@@ -162,14 +197,40 @@ namespace qns16avx2
             solution[next_column] = current_row;
 
             // Call recursively
-            do_solve(new_map, solution, next_column);
+            do_solve(new_map, solution, next_column, td);
         }
-
-#endif // MY_COMPUTER_SUPPORTS_AVX2
+#endif // MY_COMPUTER_SUPPORTS_AVX2_AND_I_HAVE_TIME
 
         // Leave things as they were.
         solution[next_column] = -1;
     } // void do_solve(map_t map, std::vector<int>& solution, int current_column)
+
+    class QueensSlice
+    {
+        const int m_starting_index;
+        const int m_ending_index;
+        thread_data& m_data;
+        map_t m_starting_map;
+    public:
+        QueensSlice(int starting_index, int ending_index, thread_data &data, map_t starting_map):
+            m_starting_index(starting_index),
+            m_ending_index(ending_index),
+            m_data(data),
+            m_starting_map(starting_map)
+        {
+        }
+        QueensSlice(const QueensSlice& that) = default;
+        void operator()()
+        {
+            for (int_fast8_t current_row = m_starting_index; current_row < m_ending_index; ++current_row)
+            {
+                m_data.solution[0] = current_row;
+                do_solve(m_starting_map, m_data.solution, 0, m_data);
+            }
+        }
+        int get_failures_count() const { return m_data.failures_count; }
+        int get_success_count() const { return m_data.success_count; }
+    };
 
     double solve()
     {
@@ -185,6 +246,29 @@ namespace qns16avx2
         hi_res_timer::microsecs_t tot_time = 0ULL;
 
 
+        int n_threads = (int)std::thread::hardware_concurrency(); // Could encapsulate this in thread pool.
+        // std::cout << n_threads << " concurrent threads are supported." << std::endl;
+        if (n_threads < 2)
+        {
+            throw std::exception("Threads not supported");
+        }
+
+        ldiv_t thr_manager = ldiv(starting_rows_to_test, n_threads);
+        // e.g., 14x14 with 2 cores: quot = 3, rem = 2.
+        // So threads should be: 0-3, 4-7, 8-10, 11-13 (three per thread and the first 2 get an additional one)
+        std::vector<int> starting_indexes(n_threads + 1, starting_rows_to_test); // for the last one. 
+        int j = 0;
+        for (int i_thread = 0; i_thread < n_threads; ++i_thread)
+        {
+            starting_indexes[i_thread] = j;
+            j += thr_manager.quot;
+            if (thr_manager.rem) // may be zero to begin with.
+            {
+                ++j;
+                --thr_manager.rem;
+            }
+        }
+
         for (int loop = 0; loop < loops; ++loop)
         {
             failures_count = 0;
@@ -195,78 +279,78 @@ namespace qns16avx2
             {
                 starting_map = starting_map | row_masks[i];
             }
-            hi_res_timer timer;
-            for (int_fast8_t current_row = 0; current_row < starting_rows_to_test; ++current_row)
+
+            std::vector<thread_data> all_data(n_threads, thread_data());
+            std::vector<QueensSlice> slices;
+            for (int i_thread = 0; i_thread < n_threads; ++i_thread)
             {
-                solution[0] = current_row;
-                do_solve(starting_map, solution, 0);
+                slices.push_back(
+                    QueensSlice(
+                        starting_indexes[i_thread],
+                        starting_indexes[i_thread + 1],
+                        all_data[i_thread],
+                        starting_map))
+                    ;
+            }
+
+            ThreadPool<QueensSlice> pool;
+            hi_res_timer timer;
+            for (int i_thread = 0; i_thread < n_threads; ++i_thread)
+            {
+                pool.push(&slices[i_thread]);
+            }
+            pool.wait_all();
+            for (int i_thread = 0; i_thread < n_threads; ++i_thread)
+            {
+                failures_count += all_data[i_thread].failures_count;
+                success_count += all_data[i_thread].success_count;
             }
             timer.Stop();
+
             auto microseconds = timer.GetElapsedMicroseconds();
-            // std::cout << "Resolving took " << microseconds << " microseconds." << std::endl;
             if (microseconds < min_time) min_time = microseconds;
             if (microseconds > max_time) max_time = microseconds;
             tot_time += microseconds;
         }
 
-        std::time_t now = time(nullptr);
-
         const double average_time = double(tot_time) / double(loops);
 
+        std::time_t now = time(nullptr);
+        std::string s_now(std::asctime(std::localtime(&now)));
+        s_now.pop_back();
         if (average_time < 1'000)
         {
             // Microseconds
             std::cout
-                << std::asctime(std::localtime(&now))
+                << s_now
+                << " Found " << success_count << " solutions with " << failures_count << " failures " << std::endl
                 << " The fastest run took " << min_time << " microseconds, the slowest took " << max_time
-                << ", and an average of " << loops << " runs was " << average_time << "." << std::endl;
+                << ", and an average of " << loops << " runs was " << average_time 
+                << " for a board of size " << board_size << " by " << board_size <<"." << std::endl;
         }
         else if (average_time < 1'000'000)
         {
             // Milliseconds
             std::cout
-                << std::asctime(std::localtime(&now))
+                << s_now
+                << " Found " << success_count << " solutions with " << failures_count << " failures " << std::endl
                 << " The fastest run took " << double(min_time) / 1e3 << " milliseconds, the slowest took " << double(max_time) / 1e3
-                << ", and an average of " << loops << " runs was " << average_time / 1e3 << "." << std::endl;
+                << ", and an average of " << loops << " runs was " << average_time / 1e3 
+                << " for a board of size " << board_size << " by " << board_size << "." << std::endl;
         }
         else
         {
             // Seconds. 16x16 takes above 17 seconds. 
             std::cout
-                << std::asctime(std::localtime(&now))
+                << s_now
+                << " Found " << success_count << " solutions with " << failures_count << " failures " << std::endl
                 << " The fastest run took " << double(min_time) / 1e6 << " seconds, the slowest took " << double(max_time) / 1e6
-                << ", and an average of " << loops << " runs was " << average_time / 1e6 << "." << std::endl;
+                << ", and an average of " << loops << " runs was " << average_time / 1e6
+                << " for a board of size " << board_size << " by " << board_size << "." << std::endl;
         }
-        do_show_results(failures_count, success_count, solutions, board_size);
+        // TODO: Merge solutions and call this. do_show_results(failures_count, success_count, solutions, board_size);
         std::cout.flush();
         return double(average_time);
-    }
-
-    void solve_once()
-    {
-        failures_count = 0;
-        success_count = 0;
-        std::vector<int> solution(board_size, -1);
-        const int starting_rows_to_test = (board_size / 2) + (board_size % 2);
-        map_t starting_map{ .m256i_u64 { 0ULL, 0ULL, 0ULL, 0ULL } };
-        for (int i = board_size; i < maximum_allowed_board_size; ++i)
-        {
-            starting_map = starting_map | row_masks[i];
-        }
-        hi_res_timer timer;
-        for (int_fast8_t current_row = 0; current_row < starting_rows_to_test; ++current_row)
-        {
-            solution[0] = current_row;
-            do_solve(starting_map, solution, 0);
-        }
-        timer.Stop();
-        std::cout << "Resolving took " << timer.GetElapsedMicroseconds() 
-            << " microseconds, with " << success_count << " solutions and " 
-            << failures_count << " failures for half a board of size " << board_size  
-            << "." << std::endl;
-        std::cout.flush();
-        do_show_results(failures_count, success_count, solutions, board_size);
-        std::cout.flush();
     }
 
     void set_verbose(bool new_val)

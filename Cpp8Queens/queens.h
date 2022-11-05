@@ -6,7 +6,7 @@
 
 namespace qns
 {
-    void solve();
+    double solve(); // returns average microseconds
     void set_verbose(bool new_val);
     void set_short(int trials);
     void test();

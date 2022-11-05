@@ -350,7 +350,7 @@ namespace qns
 
 #define FOR_PROFILING
 #ifdef FOR_PROFILING
-void qns::solve()
+double qns::solve()
 {
     // Solution that works for an 8x8 chess board only (not generalized to n by n).
     // On the other hand, chess boards have 64 squares.
@@ -398,9 +398,10 @@ void qns::solve()
         solutions[success_count][0] = sentinel;
     }
     std::cout.flush();
+    return double(tot_time) / loops;
 }
 #else
-void qns::solve()
+double qns::solve()
 {
     // Solution that works for an 8x8 chess board only (not generalized to n by n).
     // On the other hand, chess boards have 64 squares.
@@ -415,6 +416,7 @@ void qns::solve()
     timer.Stop();
     std::cout << "Resolving took " << timer.GetElapsedMicroseconds() << " microseconds." << std::endl;
     do_show_results(failures_count, success_count, solutions, board_size);
+    return double(timer.GetElapsedMicroseconds());
 }
 #endif // FOR_PROFILING
 

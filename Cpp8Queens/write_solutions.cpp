@@ -251,7 +251,7 @@ void do_show_results(unsigned long long failures_count, unsigned long long succe
         {
             cout << " ******************";
         }
-        cout << endl << endl;
+        cout << std::dec << endl << endl;
     }
 
 #endif // def _DEBUG
