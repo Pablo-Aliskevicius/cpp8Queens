@@ -59,6 +59,7 @@ namespace qns16avx2
     }
 
 
+// #define MY_COMPUTER_SUPPORTS_AVX2_AND_I_HAVE_TIME
 #ifdef MY_COMPUTER_SUPPORTS_AVX2_AND_I_HAVE_TIME
     // Performance wise, this give us nothing for 16x16, and we lose for smaller board sizes.
     // But the code is shorter, and we learn a neat AVX2 trick. 
@@ -66,7 +67,8 @@ namespace qns16avx2
     static const alignas(64) m256i indices { .m256i_i16{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 , 11, 12, 13, 14, 15 } };
     m256i not_threatened_rows_p(const map_t& map, int current_column)
     {
-        return indices | _mm256_cmpeq_epi16(map & column_masks[current_column], column_masks[current_column]); // Sentinel where threatened.
+        auto cm = column_masks[current_column];
+        return _mm256_or_si256(indices, _mm256_cmpeq_epi16(_mm256_and_si256(map, cm), cm)); // Sentinel where threatened.
     }
 #endif // MY_COMPUTER_SUPPORTS_AVX2_AND_I_HAVE_TIME
 
@@ -165,7 +167,7 @@ namespace qns16avx2
             do_solve(new_map, solution, next_column);
         }
 
-#endif // MY_COMPUTER_SUPPORTS_AVX2
+#endif // MY_COMPUTER_SUPPORTS_AVX2_AND_I_HAVE_TIME
 
         // Leave things as they were.
         solution[next_column] = -1;
