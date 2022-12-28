@@ -175,7 +175,6 @@ namespace qns16cmn
     const std::vector<int>& not_threatened_rows_mt(const map_t& map, int board_size, int current_column, std::vector<int>& result)
     {
         // PRECONDITION: MASK BEFORE CALLING! const map_t mask = (map & column_masks[current_column]);
-        // One 64-bit integer == 8 chars.
         const unsigned short* pRow = map.m256i_u16;
         int j = 0;
 
