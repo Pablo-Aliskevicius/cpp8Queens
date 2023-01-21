@@ -24,7 +24,7 @@ typedef union  __declspec(intrin_type) __declspec(align(32)) __m256i {
 namespace qns16cmn
 {
     // Using LibreOffice CALC to generate code.
-    alignas(64) flags_t row_masks[] = {
+    ALIGN_8Q flags_t row_masks[] = {
         {.m256i_u16 = {0xffff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }},
         {.m256i_u16 = {0, 0xffff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }},
         {.m256i_u16 = {0, 0, 0xffff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }},
@@ -46,7 +46,7 @@ namespace qns16cmn
     static_assert(sizeof(row_masks) / sizeof(row_masks[0]) == maximum_allowed_board_size, "Literal array of wrong size here.");
 
     // Had an ugly bug here: 15 initializers per line, instead of 16.
-    alignas(64) flags_t column_masks[] = {
+    ALIGN_8Q flags_t column_masks[] = {
         {.m256i_u16 = {0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, } },
         {.m256i_u16 = {0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, } },
         {.m256i_u16 = {0x2000, 0x2000, 0x2000, 0x2000, 0x2000, 0x2000, 0x2000, 0x2000, 0x2000, 0x2000, 0x2000, 0x2000, 0x2000, 0x2000, 0x2000, 0x2000, } },
@@ -68,7 +68,7 @@ namespace qns16cmn
     static_assert(sizeof(column_masks) / sizeof(column_masks[0]) == maximum_allowed_board_size, "Literal array of wrong size here.");
 
 
-    alignas(64) flags_t main_diagonal_parallels[] = {
+    ALIGN_8Q flags_t main_diagonal_parallels[] = {
         {.m256i_u16 = {0x0001, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, } },
         {.m256i_u16 = {0x0002, 0x0001, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, } },
         {.m256i_u16 = {0x0004, 0x0002, 0x0001, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, } },
@@ -105,7 +105,7 @@ namespace qns16cmn
     static_assert(sizeof(main_diagonal_parallels) / sizeof(main_diagonal_parallels[0]) == (maximum_allowed_board_size * 2 - 1),
         "Literal array of wrong size here.");
 
-    alignas(64) flags_t second_diagonal_parallels[] = {
+    ALIGN_8Q flags_t second_diagonal_parallels[] = {
         {.m256i_u16 = {0x8000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, } },
         {.m256i_u16 = {0x4000, 0x8000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, } },
         {.m256i_u16 = {0x2000, 0x4000, 0x8000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, } },

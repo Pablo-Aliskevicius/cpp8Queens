@@ -107,7 +107,7 @@ namespace qns16avx2mt
     // Performance wise, this give us nothing for 16x16, and we lose for smaller board sizes.
     // But the code is shorter, and we learn a neat AVX2 trick. 
     // _p is for packed.
-    static const alignas(64) m256i indices { .m256i_i16{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 , 11, 12, 13, 14, 15 } };
+    static const ALIGN_8Q m256i indices { .m256i_i16{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 , 11, 12, 13, 14, 15 } };
     m256i not_threatened_rows_p(const map_t& map, int current_column)
     {
         return indices | _mm256_cmpeq_epi16(map & column_masks[current_column], column_masks[current_column]); // Sentinel where threatened.
@@ -118,7 +118,7 @@ namespace qns16avx2mt
     #define make_threat(row, column) (row_masks[row] | main_diagonal_parallels[row + 15 - column] | second_diagonal_parallels[row + column] )
 
     class Threats {
-        std::vector<map_t> alignas(64) m_threats;
+        std::vector<map_t> ALIGN_8Q m_threats;
     public:
         Threats() : m_threats{
             make_threat(0, 0), 	make_threat(0, 1),  make_threat(0, 2), 	make_threat(0, 3), 	make_threat(0, 4), 	make_threat(0, 5), 	make_threat(0, 6), 	make_threat(0, 7), 	make_threat(0, 8), 	make_threat(0, 9), 	make_threat(0, 10), make_threat(0, 11),   make_threat(0, 12),  make_threat(0, 13), 	make_threat(0, 14),  make_threat(0, 15),

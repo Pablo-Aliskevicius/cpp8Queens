@@ -5,14 +5,17 @@
 
 union __m256i; // forward declaration.
 
+#define ALIGN_8Q alignas(64)
+// #define ALIGN_8Q __declspec(align(32))
+
 namespace qns16cmn
 {
     using flags_t = ::__m256i;
     using map_t = ::__m256i;
-    alignas(64) flags_t row_masks[];
-    alignas(64) flags_t column_masks[];
-    alignas(64) flags_t main_diagonal_parallels[];
-    alignas(64) flags_t second_diagonal_parallels[];
+    ALIGN_8Q flags_t row_masks[];
+    ALIGN_8Q flags_t column_masks[];
+    ALIGN_8Q flags_t main_diagonal_parallels[];
+    ALIGN_8Q flags_t second_diagonal_parallels[];
 
     extern std::vector<std::vector<int>> safe_indices;
     extern const int sentinel;

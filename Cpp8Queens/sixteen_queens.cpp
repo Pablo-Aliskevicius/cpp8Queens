@@ -82,7 +82,7 @@ namespace qns16
 
 #define make_threat(row, column) (row_masks[row] | main_diagonal_parallels[row + 15 - column] | second_diagonal_parallels[row + column] )
 
-	static const alignas(64) flags_t threats[] = {
+	static const ALIGN_8Q flags_t threats[] = {
 			make_threat(0, 0), 	make_threat(0, 1),  make_threat(0, 2), 	make_threat(0, 3), 	make_threat(0, 4), 	make_threat(0, 5), 	make_threat(0, 6), 	make_threat(0, 7), 	make_threat(0, 8), 	make_threat(0, 9), 	make_threat(0, 10), make_threat(0, 11),   make_threat(0, 12),  make_threat(0, 13), 	make_threat(0, 14),  make_threat(0, 15),
 			make_threat(1, 0), 	make_threat(1, 1),  make_threat(1, 2), 	make_threat(1, 3), 	make_threat(1, 4), 	make_threat(1, 5), 	make_threat(1, 6), 	make_threat(1, 7), 	make_threat(1, 8), 	make_threat(1, 9), 	make_threat(1, 10), make_threat(1, 11),   make_threat(1, 12),  make_threat(1, 13), 	make_threat(1, 14),  make_threat(1, 15),
 			make_threat(2, 0), 	make_threat(2, 1),  make_threat(2, 2), 	make_threat(2, 3), 	make_threat(2, 4), 	make_threat(2, 5), 	make_threat(2, 6), 	make_threat(2, 7), 	make_threat(2, 8), 	make_threat(2, 9), 	make_threat(2, 10), make_threat(2, 11),   make_threat(2, 12),  make_threat(2, 13), 	make_threat(2, 14),  make_threat(2, 15),
