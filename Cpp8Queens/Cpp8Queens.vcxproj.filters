@@ -71,5 +71,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Documentation.htm" />
+    <None Include="x64\Release\queens.asm">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
