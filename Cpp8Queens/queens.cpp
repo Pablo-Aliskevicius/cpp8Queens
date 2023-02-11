@@ -1,3 +1,10 @@
+#if _MSVC_LANG >= 201703L
+#define AT_LEAST_2017
+#endif
+
+#ifdef AT_LEAST_2017
+#include <array>
+#endif
 #include <bitset>
 #include <cstdint>
 #include <iostream>
@@ -22,174 +29,67 @@ namespace qns
 
     static constexpr int maximum_allowed_board_size = 8; // memory allocations are based on this. 
 
+    namespace row_msks
+    {
+        // Declare and call a constexpr lambda. The array will be filled at compile time. Requires C++17 at least.
+        template<typename T, size_t size>
+        constexpr const std::array<T, size> get_row_masks = [] {
+            std::array<T, size> A = {};
+            for (unsigned i = 0; i < size; i++) {
+                // A[0] = 0xff;
+                // A[1] = 0xff00;
+                // ...
+                // A[6] = 0xff'0000'0000'0000
+                // A[7] = 0xff00'0000'0000'0000
+                A[i] = static_cast<T>(0xff) << (8 * i);
+            }
+            return A;
+        }();
 
-    // If you consider this is cheating, use template metaprogramming.
-    static constexpr flags_t row_masks[] = {
-        0xff,
-        0xff00,
-        0xff0000,
-        0xff000000,
-        0xff00000000,
-        0xff0000000000,
-        0xff000000000000,
-        0xff00000000000000,
-    };
+        auto _row_masks = get_row_masks<flags_t, maximum_allowed_board_size>;
+    }
 
-    static_assert(sizeof(row_masks) / sizeof(row_masks[0]) == maximum_allowed_board_size,
-        "Literal array of wrong size here.");
+    static const flags_t* const row_masks = row_msks::_row_masks.data();
 
-    // HEY, WE'RE LITTLE ENDIAN HERE!
-    static constexpr flags_t column_masks[] = {
-        0x8080808080808080,
-        0x4040404040404040,
-        0x2020202020202020,
-        0x1010101010101010,
-        0x0808080808080808,
-        0x0404040404040404,
-        0x0202020202020202,
-        0x0101010101010101,
-    };
+    namespace col_masks
+    { 
+        // Replicate 1 byte, 8 times, at compile time.
+        template<typename T, size_t size>
+        constexpr T replicate(unsigned char c) {
+            T t(c);
+            for (unsigned i = 1; i < size; ++i)
+                t |= (T(c) << (i * 8));
+            return t;
+        }
 
-    static_assert(sizeof(column_masks) / sizeof(column_masks[0]) == maximum_allowed_board_size,
-        "Literal array of wrong size here.");
+        template<typename T, size_t size>
+        constexpr const std::array<T, size> get_column_masks = [] {
+            std::array<T, size> A = {};
+            for (unsigned i = 0; i < size; i++) {
+                // A[0] = replicate<8>(0x80)
+                // A[1] = replicate<8>(0x40)
+                // ...
+                // A[6] = replicate<8>(0x02)
+                // A[7] = replicate<8>(0x01)
+                A[i] = replicate<T, size>(1 << ((size & 0xf) - 1 - i));
+            }
+            return A;
+        }();
 
+        auto _col_masks = get_column_masks<flags_t, maximum_allowed_board_size>;
+    }
 
-    // Visualize:
-    //   b"1000 0000" // == 0x80 << 7
-    //   b"0100 0000" // == 0x40 << 6
-    //   b"0010 0000" // == 0x20 << 5
-    // ...
-    // We may have an 'endian' issue. 
-    // static const flags_t main_diagonal_mask = 0x0102040810204080;
-
-    static constexpr flags_t main_diagonal_parallels[] = {
-        0x0000'0000'0000'0001, // 0
-        0x0000'0000'0000'0102, // 1
-        0x0000'0000'0001'0204, // 2
-        0x0000'0000'0102'0408, // 3
-        0x0000'0001'0204'0810, // 4
-        0x0000'0102'0408'1020, // 5
-        0x0001'0204'0810'2040, // 6
-        0x0102'0408'1020'4080, // 7
-        0x0204'0810'2040'8000, // 8
-        0x0408'1020'4080'0000, // 9
-        0x0810'2040'8000'0000, // a
-        0x1020'4080'0000'0000, // b
-        0x2040'8000'0000'0000, // c
-        0x4080'0000'0000'0000, // d
-        0x8000'0000'0000'0000, // e
-    };
-
-    static_assert(sizeof(main_diagonal_parallels) / sizeof(main_diagonal_parallels[0]) == (maximum_allowed_board_size * 2 - 1),
-        "Literal array of wrong size here.");
-
-
-    // static const flags_t secondary_diagonal_mask = 0x8040201008040201;
-    static constexpr flags_t second_diagonal_parallels[] = {
-        0x0000'0000'0000'0080, // 0
-        0x0000'0000'0000'8040, // 1
-        0x0000'0000'0080'4020, // 2
-        0x0000'0000'8040'2010, // 3
-        0x0000'0080'4020'1008, // 4
-        0x0000'8040'2010'0804, // 5
-        0x0080'4020'1008'0402, // 6
-        0x8040'2010'0804'0201, // 7
-        0x4020'1008'0402'0100, // 8
-        0x2010'0804'0201'0000, // 9
-        0x1008'0402'0100'0000, // a
-        0x0804'0201'0000'0000, // b
-        0x0402'0100'0000'0000, // c
-        0x0201'0000'0000'0000, // d
-        0x0100'0000'0000'0000, // e
-    };
-
-    static_assert(sizeof(second_diagonal_parallels) / sizeof(second_diagonal_parallels[0]) == (maximum_allowed_board_size * 2 - 1),
-        "Literal array of wrong size here.");
-
+    static const flags_t* const column_masks = col_masks::_col_masks.data();
 
     const int sentinel = -1;
-    // Save some time in allocations at run time. 
-    std::vector<std::vector<int>> safe_indices{
-        std::vector<int>(maximum_allowed_board_size, sentinel),  // 0
-        std::vector<int>(maximum_allowed_board_size, sentinel),
-        std::vector<int>(maximum_allowed_board_size, sentinel),
-        std::vector<int>(maximum_allowed_board_size, sentinel),  // 3
-        std::vector<int>(maximum_allowed_board_size, sentinel),
-        std::vector<int>(maximum_allowed_board_size, sentinel),
-        std::vector<int>(maximum_allowed_board_size, sentinel),  // 6
-        std::vector<int>(maximum_allowed_board_size, sentinel),  // 7
-    };
-
-
-    inline bool is_totally_under_threat(map_t map, int current_column)
-    {
-        const auto column_mask = column_masks[current_column];
-#ifdef _DEBUG
-        const bool ret = ((map & column_mask) == column_mask);
-        if (verbose && ret)
-        {
-            std::cout << "Column " << current_column << " is totally under threat, "
-                << std::hex
-                << map << " includes " << column_mask
-                << std::endl;
-        }
-        return ret;
-#else
-        return ((map & column_mask) == column_mask);
-#endif // def _DEBUG
-
-    }
-
-
-    const std::vector<int>& not_threatened_rows(const map_t map, int current_column)
-    {
-        std::vector<int>& result = safe_indices[current_column];
-        const map_t mask = (map & column_masks[current_column]);
-        // One 64-bit integer == 8 chars.
-        const char* pRow = reinterpret_cast<const char*>(&mask);
-        int j = 0;
-        // Manual loop unrolling, ugly as it looks, but fast like hell.
-        // To allow several board sizes (4-8), we'll use something inspired in the Duff Device.
-        int_fast8_t i = -1;
-        switch (board_size)
-        {
-        case 8:
-        default:
-            if (!pRow[++i]) result[j++] = i;
-        case 7:
-            if (!pRow[++i]) result[j++] = i;
-        case 6:
-            if (!pRow[++i]) result[j++] = i;
-        case 5:
-            if (!pRow[++i]) result[j++] = i;
-        case 4:
-            if (!pRow[++i]) result[j++] = i;
-            if (!pRow[++i]) result[j++] = i;
-            if (!pRow[++i]) result[j++] = i;
-            if (!pRow[++i]) result[j++] = i;
-        }
-#ifdef _DEBUG
-        if (verbose)
-        {
-            std::cout << "Found " << j << " non-threatened rows at column "
-                << current_column
-                << " and they are ";
-            for (auto val : result)
-            {
-                std::cout << val << ", ";
-            }
-            std::cout << std::endl;
-        }
-#endif // def _DEBUG
-        if (j < 8)
-        {
-            result[j] = sentinel;
-        }
-        return result;
-    }
 
     void show_map(map_t map)
     {
+        /// <summary>
+        /// Not just for debugging, also called by qns::test().
+        /// Show a map as text on the console. 
+        /// </summary>
+        /// <param name="map"></param>
         static_assert(sizeof(unsigned char) * 8 == sizeof(map_t));
 
         std::cout << std::hex << (unsigned long long) map << std::endl;
@@ -211,59 +111,164 @@ namespace qns
         std::cout << std::endl;
     }
 
-
-    // Some good old-fashioned template metaprogramming to OR masks at compile-time.
-    template<int row, int column>
-    struct threat_mask {
-        enum struct _b : map_t {
-            value = (row_masks[row] | main_diagonal_parallels[row + 7 - column] | second_diagonal_parallels[row + column])
-        };
-    };
-
-    static const std::vector<map_t> threats{
-        (map_t)threat_mask<0, 0>::_b::value, (map_t)threat_mask<0, 1>::_b::value, (map_t)threat_mask<0, 2>::_b::value, (map_t)threat_mask<0, 3>::_b::value,
-        (map_t)threat_mask<0, 4>::_b::value, (map_t)threat_mask<0, 5>::_b::value, (map_t)threat_mask<0, 6>::_b::value, (map_t)threat_mask<0, 7>::_b::value,
-
-        (map_t)threat_mask<1, 0>::_b::value, (map_t)threat_mask<1, 1>::_b::value, (map_t)threat_mask<1, 2>::_b::value, (map_t)threat_mask<1, 3>::_b::value,
-        (map_t)threat_mask<1, 4>::_b::value, (map_t)threat_mask<1, 5>::_b::value, (map_t)threat_mask<1, 6>::_b::value, (map_t)threat_mask<1, 7>::_b::value,
-
-        (map_t)threat_mask<2, 0>::_b::value, (map_t)threat_mask<2, 1>::_b::value, (map_t)threat_mask<2, 2>::_b::value, (map_t)threat_mask<2, 3>::_b::value,
-        (map_t)threat_mask<2, 4>::_b::value, (map_t)threat_mask<2, 5>::_b::value, (map_t)threat_mask<2, 6>::_b::value, (map_t)threat_mask<2, 7>::_b::value,
-
-        (map_t)threat_mask<3, 0>::_b::value, (map_t)threat_mask<3, 1>::_b::value, (map_t)threat_mask<3, 2>::_b::value, (map_t)threat_mask<3, 3>::_b::value,
-        (map_t)threat_mask<3, 4>::_b::value, (map_t)threat_mask<3, 5>::_b::value, (map_t)threat_mask<3, 6>::_b::value, (map_t)threat_mask<3, 7>::_b::value,
-
-        (map_t)threat_mask<4, 0>::_b::value, (map_t)threat_mask<4, 1>::_b::value, (map_t)threat_mask<4, 2>::_b::value, (map_t)threat_mask<4, 3>::_b::value,
-        (map_t)threat_mask<4, 4>::_b::value, (map_t)threat_mask<4, 5>::_b::value, (map_t)threat_mask<4, 6>::_b::value, (map_t)threat_mask<4, 7>::_b::value,
-
-        (map_t)threat_mask<5, 0>::_b::value, (map_t)threat_mask<5, 1>::_b::value, (map_t)threat_mask<5, 2>::_b::value, (map_t)threat_mask<5, 3>::_b::value,
-        (map_t)threat_mask<5, 4>::_b::value, (map_t)threat_mask<5, 5>::_b::value, (map_t)threat_mask<5, 6>::_b::value, (map_t)threat_mask<5, 7>::_b::value,
-
-        (map_t)threat_mask<6, 0>::_b::value, (map_t)threat_mask<6, 1>::_b::value, (map_t)threat_mask<6, 2>::_b::value, (map_t)threat_mask<6, 3>::_b::value,
-        (map_t)threat_mask<6, 4>::_b::value, (map_t)threat_mask<6, 5>::_b::value, (map_t)threat_mask<6, 6>::_b::value, (map_t)threat_mask<6, 7>::_b::value,
-
-        (map_t)threat_mask<7, 0>::_b::value, (map_t)threat_mask<7, 1>::_b::value, (map_t)threat_mask<7, 2>::_b::value, (map_t)threat_mask<7, 3>::_b::value,
-        (map_t)threat_mask<7, 4>::_b::value, (map_t)threat_mask<7, 5>::_b::value, (map_t)threat_mask<7, 6>::_b::value, (map_t)threat_mask<7, 7>::_b::value
-    };
-
-
-    // Everything by value, on purpose.
-    inline map_t threaten(map_t map, int row, int column)
+    namespace threats 
     {
-        // Before template metaprogramming we did this:
-        //  map |= (row_masks[row] | main_diagonal_parallels[row + 7 - column] | second_diagonal_parallels[row + column]);
-#ifdef _DEBUG
-        map |= threats[row * 8 + column];
-        if (verbose)
-        {
-            std::cout << "Just threatened cell [" << row << ", " << column << "]." << std::endl;
-            show_map(map);
-        }
-        return map;
-#endif // def _DEBUG
-        return map | threats[row << 3 | column];
-    }
+        // Save some time in allocations at run time. 
+        std::vector<std::vector<int>> safe_indices{
+            std::vector<int>(maximum_allowed_board_size, sentinel),  // 0
+            std::vector<int>(maximum_allowed_board_size, sentinel),
+            std::vector<int>(maximum_allowed_board_size, sentinel),
+            std::vector<int>(maximum_allowed_board_size, sentinel),  // 3
+            std::vector<int>(maximum_allowed_board_size, sentinel),
+            std::vector<int>(maximum_allowed_board_size, sentinel),
+            std::vector<int>(maximum_allowed_board_size, sentinel),  // 6
+            std::vector<int>(maximum_allowed_board_size, sentinel),  // 7
+        };
 
+        template <typename T>
+        constexpr T get_diagonal_size(T size)
+        {
+            return size * 2 - 1;
+        }
+
+        template <typename T, size_t size>
+        constexpr const std::array<T, get_diagonal_size(size)> get_main_diagonal = [] 
+        {
+            std::array<T, get_diagonal_size(size)> A = { 0 };
+            T bit{ 1 };
+            for (unsigned row = 0; row < size; ++row)
+            {
+                for (unsigned col = 0; col < size; ++col)
+                {
+                    unsigned item = row - col + (unsigned) size - 1;
+                    A[item] |= (bit << ((7 - col) * 8 + row));
+                }
+            }
+            return A;
+        }();
+
+        template <typename T, size_t size>
+        constexpr const std::array<T, get_diagonal_size(size)> get_second_diagonal = [] 
+        {
+            std::array<T, get_diagonal_size(size)> A = { 0 };
+            T bit{ 1 };
+            for (unsigned row = 0; row < size; ++row)
+            {
+                for (unsigned col = 0; col < size; ++col)
+                {
+                    unsigned item = unsigned(get_diagonal_size(size)) - 1 - row - col;
+                    A[item] |= (bit << ((7 - col) * 8 + row));
+                }
+            }
+            return A;
+        }();
+
+        inline bool is_totally_under_threat(map_t map, int current_column)
+        {
+            const auto column_mask = column_masks[current_column];
+#ifdef _DEBUG
+            const bool ret = ((map & column_mask) == column_mask);
+            if (verbose && ret)
+            {
+                std::cout << "Column " << current_column << " is totally under threat, "
+                    << std::hex
+                    << map << " includes " << column_mask
+                    << std::endl;
+            }
+            return ret;
+#else
+            return ((map & column_mask) == column_mask);
+#endif // def _DEBUG
+
+        }
+
+        const std::vector<int>& not_threatened_rows(const map_t map, int current_column)
+        {
+            std::vector<int>& result = safe_indices[current_column];
+            const map_t mask = (map & column_masks[current_column]);
+            // One 64-bit integer == 8 chars.
+            const char* pRow = reinterpret_cast<const char*>(&mask);
+            int j = 0;
+            // Manual loop unrolling, ugly as it looks, but fast like hell.
+            // To allow several board sizes (4-8), we'll use something inspired in the Duff Device.
+            int_fast8_t i = -1;
+            switch (board_size)
+            {
+            case 8:
+            default:
+                if (!pRow[++i]) result[j++] = i;
+            case 7:
+                if (!pRow[++i]) result[j++] = i;
+            case 6:
+                if (!pRow[++i]) result[j++] = i;
+            case 5:
+                if (!pRow[++i]) result[j++] = i;
+            case 4:
+                if (!pRow[++i]) result[j++] = i;
+                if (!pRow[++i]) result[j++] = i;
+                if (!pRow[++i]) result[j++] = i;
+                if (!pRow[++i]) result[j++] = i;
+            }
+#ifdef _DEBUG
+            if (verbose)
+            {
+                std::cout << "Found " << j << " non-threatened rows at column "
+                    << current_column
+                    << " and they are ";
+                for (auto val : result)
+                {
+                    std::cout << val << ", ";
+                }
+                std::cout << std::endl;
+            }
+#endif // def _DEBUG
+            if (j < 8)
+            {
+                result[j] = sentinel;
+            }
+            return result;
+        }
+
+
+
+        // Compile-time calculation since C++ 17. Rules are TIGHT.
+        template<typename VALUETYPE, unsigned int BOARD_SIZE>
+        constexpr std::array<VALUETYPE, BOARD_SIZE* BOARD_SIZE> get_threats = [] { // OR: constexpr auto table
+            std::array<VALUETYPE, BOARD_SIZE* BOARD_SIZE> A = {};
+            const auto row__masks = row_msks::get_row_masks<VALUETYPE, BOARD_SIZE>;
+            const auto main_diagonal_parallels = get_main_diagonal<VALUETYPE, BOARD_SIZE>;
+            const auto second_diagonal_parallels = get_second_diagonal<VALUETYPE, BOARD_SIZE>;
+
+            for (unsigned row = 0; row < BOARD_SIZE; row++) {
+                for (unsigned column = 0; column < BOARD_SIZE; column++) {
+                    A[row * BOARD_SIZE + column] = row__masks[row] | main_diagonal_parallels[row + 7 - column] | second_diagonal_parallels[row + column];
+                }
+            }
+            return A;
+        }();
+
+        auto _threats = get_threats<map_t, maximum_allowed_board_size>;
+        // const map_t* threats = _threats.data();
+
+        // Everything by value, on purpose.
+        inline map_t threaten(map_t map, int row, int column)
+        {
+            // Before template metaprogramming we did this:
+            //  map |= (row_masks[row] | main_diagonal_parallels[row + 7 - column] | second_diagonal_parallels[row + column]);
+            const map_t* threats = _threats.data();
+#ifdef _DEBUG
+            map |= threats[row * 8 + column];
+            if (verbose)
+            {
+                std::cout << "Just threatened cell [" << row << ", " << column << "]." << std::endl;
+                show_map(map);
+            }
+            return map;
+#endif // def _DEBUG
+            return map | threats[row << 3 | column];
+        }
+    } // namespace threats
+    
 #ifdef _DEBUG
     void do_show_failure(const map_t map, const std::vector<int>& result)
     {
@@ -312,10 +317,10 @@ namespace qns
             return;
         }
 #endif // def _DEBUG
-        const map_t new_map = threaten(map, solution[current_column], current_column);
+        const map_t new_map = threats::threaten(map, solution[current_column], current_column);
         const int next_column = 1 + current_column;
 
-        if (is_totally_under_threat(new_map, next_column))
+        if (threats::is_totally_under_threat(new_map, next_column))
         {
             ++failures_count;
 #ifdef _DEBUG
@@ -326,7 +331,7 @@ namespace qns
 #endif // def _DEBUG
             return;
         }
-        for (auto current_row : not_threatened_rows(new_map, next_column))
+        for (auto current_row : threats::not_threatened_rows(new_map, next_column))
         {
             if (sentinel == current_row)
             {
@@ -345,7 +350,7 @@ namespace qns
         }
         // Leave things as they were.
         solution[next_column] = -1;
-    }
+    } // void do_solve
 } // namespace qns 
 
 #define FOR_PROFILING
@@ -356,7 +361,7 @@ double qns::solve()
     // On the other hand, chess boards have 64 squares.
     // solutions.reserve(46); // Cheating? Nope, just using prior knowledge.
     std::vector<int> solution(maximum_allowed_board_size, -1);
-#ifdef DEBUG
+#ifdef _DEBUG
     const int loops = 1;
 #else
     const int loops = 1000;
@@ -454,7 +459,8 @@ void qns::test()
     cout << "=== Main diagonal ===" << endl;
     //show_map((map_t)main_diagonal_mask);
 
-    for (int i = 0; i < sizeof(main_diagonal_parallels) / sizeof(main_diagonal_parallels[0]); ++i)
+    const auto main_diagonal_parallels = threats::get_main_diagonal<map_t, maximum_allowed_board_size>;
+    for (int i = 0; i < main_diagonal_parallels.size(); ++i)
     {
         cout << "=== " << std::dec << i << " parallel ===" << endl;
         show_map((map_t)(main_diagonal_parallels[i]));
@@ -463,7 +469,9 @@ void qns::test()
     cout << "=== Second diagonal ===" << endl;
     //show_map((map_t)secondary_diagonal_mask);
 
-    for (int i = 0; i < sizeof(second_diagonal_parallels) / sizeof(second_diagonal_parallels[0]); ++i)
+
+    const auto second_diagonal_parallels = threats::get_second_diagonal<map_t, maximum_allowed_board_size>;
+    for (int i = 0; i < second_diagonal_parallels.size(); ++i)
     {
         cout << "=== " << std::dec << i << " second parallel ===" << endl;
         show_map((map_t)(second_diagonal_parallels[i]));
@@ -471,15 +479,15 @@ void qns::test()
 
     cout << "========" << endl;
     map_t map = 0ULL;
-    map = threaten(map, 1, 0);
+    map = threats::threaten(map, 1, 0);
     show_map(map);
 
     cout << "========" << endl;
-    map = threaten(map, 4, 1);
+    map = threats::threaten(map, 4, 1);
     show_map(map);
 
     cout << "========" << endl;
-    map = threaten(map, 7, 2);
+    map = threats::threaten(map, 7, 2);
     show_map(map);
 
     /*map_t map = 0ULL;

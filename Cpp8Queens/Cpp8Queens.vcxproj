@@ -148,7 +148,9 @@
     <ClCompile Include="Cpp8Queens.cpp" />
     <ClCompile Include="high_res_clock.cpp" />
     <ClCompile Include="InstructionSet.cpp" />
-    <ClCompile Include="queens.cpp" />
+    <ClCompile Include="queens.cpp">
+      <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AssemblyAndSourceCode</AssemblerOutput>
+    </ClCompile>
     <ClCompile Include="sixteen_queens.cpp">
       <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AssemblyAndSourceCode</AssemblerOutput>
       <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
