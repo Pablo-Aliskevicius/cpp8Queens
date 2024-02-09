@@ -78,8 +78,8 @@ int main(int argc, const char** argv)
     for (int desired_board_size = 4; desired_board_size < 9; ++desired_board_size)
     {
         qns::set_board_size(desired_board_size);
-        microsecs_t average_duration = qns::solve();
-        durations[desired_board_size][solution_type::sixty_four_standard] = average_duration;
+        microsecs_t median_duration = qns::solve();
+        durations[desired_board_size][solution_type::sixty_four_standard] = median_duration;
     }
 
     // Don't feel like adding a header just to declare two functions.
@@ -94,8 +94,8 @@ int main(int argc, const char** argv)
         for (int desired_board_size = 8; desired_board_size < 17; ++desired_board_size)
         {
             qns16avx2mt::set_board_size(desired_board_size);
-            microsecs_t average_duration = qns16avx2mt::solve();
-            durations[desired_board_size][solution_type::avx2_multi_threaded] = average_duration;
+            microsecs_t median_duration = qns16avx2mt::solve();
+            durations[desired_board_size][solution_type::avx2_multi_threaded] = median_duration;
         }
 
         std::cout << "****************************** 256-bits, AVX2, single threaded *****************************" << std::endl;
@@ -103,8 +103,8 @@ int main(int argc, const char** argv)
         for (int desired_board_size = 4; desired_board_size < 17; ++desired_board_size)
         {
             qns16avx2::set_board_size(desired_board_size);
-            microsecs_t average_duration = qns16avx2::solve();
-            durations[desired_board_size][solution_type::avx2_single_threaded] = average_duration;
+            microsecs_t median_duration = qns16avx2::solve();
+            durations[desired_board_size][solution_type::avx2_single_threaded] = median_duration;
         }
     }
 
@@ -112,8 +112,8 @@ int main(int argc, const char** argv)
     for (int desired_board_size = 4; desired_board_size < 17; ++desired_board_size)
     {
         qns16::set_board_size(desired_board_size);
-        microsecs_t average_duration = qns16::solve();
-        durations[desired_board_size][solution_type::two_fifty_six_standard] = average_duration;
+        microsecs_t median_duration = qns16::solve();
+        durations[desired_board_size][solution_type::two_fifty_six_standard] = median_duration;
     }
 
     // Display data. C++ 20 brings some handy methods, very nice to have.  
@@ -125,7 +125,7 @@ int main(int argc, const char** argv)
         return std::format("{:.3Lf}", d); 
     };
     cout 
-        << "***************** Average durations (microseconds) ****************" << endl 
+        << "***************** Median durations (microseconds) ****************" << endl 
         << "Size,      64 bits,       256 bits,           AVX2, AVX2 Multi Threaded" << endl
         << "---    -----------  --------------  --------------  --------------" << endl
         ;

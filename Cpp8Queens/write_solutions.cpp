@@ -3,6 +3,7 @@
 #include <vector>
 #include <set>
 #include <string>
+#include <format>
 
 #include <immintrin.h>  // Using intel intrinsics to learn about it. Precondition: you need AVX2 at least (which you probably have).
 
@@ -219,13 +220,23 @@ void do_show_results(unsigned long long failures_count, unsigned long long succe
     using std::endl;
 
     solutions_t full_solutions = fill_solutions(solutions, success_count, board_size);
+    const auto message = std::format(
+        std::locale(""),  // get the correct thousands separator when using :L as format string.
+        "We had {0:L} failures, and {1:L} solutions ({2}{4:L}) in half a board of size {3} by {3}",
+        failures_count, 
+        success_count,
+        ((full_solutions.size() > success_count) ? "filled by symmetry to " : "showing only "),
+        board_size,
+        full_solutions.size()
+        );
+    cout << message << endl;
 
-    cout << "We had " << failures_count << " failures, and " << success_count
-        << " solutions (" 
-        << ((full_solutions.size() > success_count) ? "filled by symmetry to ": "showing only ")
-        << full_solutions.size()
-        << ") in half a board of size " << board_size << " by " << board_size << "."
-        << endl;
+    //cout << "We had " << failures_count << " failures, and " << success_count
+    //    << " solutions (" 
+    //    << ((full_solutions.size() > success_count) ? "filled by symmetry to ": "showing only ")
+    //    << full_solutions.size()
+    //    << ") in half a board of size " << board_size << " by " << board_size << "."
+    //    << endl;
 
     cout << "The ";
     if (success_count > solutions.size())

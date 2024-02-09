@@ -157,7 +157,9 @@
     </ClCompile>
     <ClCompile Include="sixteen_queens_avx2.cpp" />
     <ClCompile Include="sixteen_queens_avx2_mt.cpp" />
-    <ClCompile Include="sixteen_queens_common.cpp" />
+    <ClCompile Include="sixteen_queens_common.cpp">
+      <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AssemblyAndSourceCode</AssemblerOutput>
+    </ClCompile>
     <ClCompile Include="write_solutions.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -175,6 +177,7 @@
       <DeploymentContent>true</DeploymentContent>
     </None>
     <None Include="x64\Release\queens.asm" />
+    <None Include="x64\Release\sixteen_queens_common.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

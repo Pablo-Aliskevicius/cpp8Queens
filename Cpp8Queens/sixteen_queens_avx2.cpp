@@ -1,5 +1,7 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS  // We do NOT support Microsoft's War on Standards.
 
+#include <algorithm>
+#include <array>
 #include <bitset>
 #include <cstdint>
 #include <iostream>
@@ -76,7 +78,7 @@ namespace qns16avx2
     #define make_threat(row, column) (row_masks[row] | main_diagonal_parallels[row + 15 - column] | second_diagonal_parallels[row + column] )
 
     class Threats {
-        std::vector<map_t> ALIGN_8Q m_threats;
+        std::array<map_t, 256> ALIGN_8Q m_threats;
     public:
         Threats() : m_threats{
             make_threat(0, 0), 	make_threat(0, 1),  make_threat(0, 2), 	make_threat(0, 3), 	make_threat(0, 4), 	make_threat(0, 5), 	make_threat(0, 6), 	make_threat(0, 7), 	make_threat(0, 8), 	make_threat(0, 9), 	make_threat(0, 10), make_threat(0, 11),   make_threat(0, 12),  make_threat(0, 13), 	make_threat(0, 14),  make_threat(0, 15),
@@ -184,15 +186,16 @@ namespace qns16avx2
         const int starting_rows_to_test = (board_size / 2) + (board_size % 2);
         hi_res_timer::microsecs_t max_time = 0ULL;
         hi_res_timer::microsecs_t min_time = std::numeric_limits<hi_res_timer::microsecs_t>::max();
-        hi_res_timer::microsecs_t tot_time = 0ULL;
-
+        // hi_res_timer::microsecs_t tot_time = 0ULL;
+        std::vector<hi_res_timer::microsecs_t> times_vec;
+        times_vec.reserve(loops);
 
         for (int loop = 0; loop < loops; ++loop)
         {
             failures_count = 0;
             success_count = 0;
 
-            map_t starting_map{ .m256i_u64 { 0ULL, 0ULL, 0ULL, 0ULL }  };
+            map_t starting_map{ .m256i_u64 { 0ULL, 0ULL, 0ULL, 0ULL } };
             for (int i = board_size; i < maximum_allowed_board_size; ++i)
             {
                 starting_map = starting_map | row_masks[i];
@@ -208,28 +211,34 @@ namespace qns16avx2
             // std::cout << "Resolving took " << microseconds << " microseconds." << std::endl;
             if (microseconds < min_time) min_time = microseconds;
             if (microseconds > max_time) max_time = microseconds;
-            tot_time += microseconds;
+            // tot_time += microseconds;
+            times_vec.push_back(microseconds);
         }
 
         std::time_t now = time(nullptr);
 
-        const double average_time = double(tot_time) / double(loops);
+        // const double average_time = double(tot_time) / double(loops);
+        std::sort(times_vec.begin(), times_vec.end());
+        const double median_time =
+            loops == 1 ? times_vec[0] :
+            loops & 0x1 ? times_vec[loops / 2 + 1] :
+            ((times_vec[loops / 2] + times_vec[loops / 2 + 1]) / 2.0);
 
-        if (average_time < 1'000)
+        if (median_time < 1'000)
         {
             // Microseconds
             std::cout
                 << std::asctime(std::localtime(&now))
                 << " The fastest run took " << min_time << " microseconds, the slowest took " << max_time
-                << ", and an average of " << loops << " runs was " << average_time << "." << std::endl;
+                << ", and a median of " << loops << " runs was " << median_time << "." << std::endl;
         }
-        else if (average_time < 1'000'000)
+        else if (median_time < 1'000'000)
         {
             // Milliseconds
             std::cout
                 << std::asctime(std::localtime(&now))
                 << " The fastest run took " << double(min_time) / 1e3 << " milliseconds, the slowest took " << double(max_time) / 1e3
-                << ", and an average of " << loops << " runs was " << average_time / 1e3 << "." << std::endl;
+                << ", and a median of " << loops << " runs was " << median_time / 1e3 << "." << std::endl;
         }
         else
         {
@@ -237,11 +246,11 @@ namespace qns16avx2
             std::cout
                 << std::asctime(std::localtime(&now))
                 << " The fastest run took " << double(min_time) / 1e6 << " seconds, the slowest took " << double(max_time) / 1e6
-                << ", and an average of " << loops << " runs was " << average_time / 1e6 << "." << std::endl;
+                << ", and a median of " << loops << " runs was " << median_time / 1e6 << "." << std::endl;
         }
         do_show_results(failures_count, success_count, solutions, board_size);
         std::cout.flush();
-        return double(average_time);
+        return double(median_time);
     }
 
     void solve_once()

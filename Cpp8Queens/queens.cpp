@@ -5,6 +5,7 @@
 #ifdef AT_LEAST_2017
 #include <array>
 #endif
+#include <algorithm>
 #include <bitset>
 #include <cstdint>
 #include <iostream>
@@ -370,8 +371,9 @@ double qns::solve()
     const int starting_rows_to_test = (board_size / 2) + (board_size % 2);
     hi_res_timer::microsecs_t max_time = 0ULL;
     hi_res_timer::microsecs_t min_time = std::numeric_limits<hi_res_timer::microsecs_t>::max();
-    hi_res_timer::microsecs_t tot_time = 0ULL;
-
+    // hi_res_timer::microsecs_t tot_time = 0ULL;
+    std::vector<hi_res_timer::microsecs_t> times_vec;
+    times_vec.reserve(loops);
 
     for (int loop = 0; loop < loops; ++loop)
     {
@@ -393,17 +395,26 @@ double qns::solve()
         // std::cout << "Resolving took " << microseconds << " microseconds." << std::endl;
         if (microseconds < min_time) min_time = microseconds;
         if (microseconds > max_time) max_time = microseconds;
-        tot_time += microseconds;
+        // tot_time += microseconds;
+        times_vec.push_back(microseconds);
     }
+
+    std::sort(times_vec.begin(), times_vec.end());
+    const double median_time =
+        loops == 1 ? times_vec[0] :
+        loops & 0x1 ? times_vec[loops / 2 + 1] :
+        ((times_vec[loops / 2] + times_vec[loops / 2 + 1]) / 2.0);
+
+
     std::cout << "The fastest run took " << min_time << " microseconds, the slowest took " << max_time
-        << ", and an average of " << loops << " runs was " << double(tot_time) / loops << std::endl;
+        << ", and a median of " << loops << " runs was " << median_time << std::endl;
     do_show_results(failures_count, success_count, solutions, board_size);
     if (success_count < solutions.size())
     {
         solutions[success_count][0] = sentinel;
     }
     std::cout.flush();
-    return double(tot_time) / loops;
+    return median_time;
 }
 #else
 double qns::solve()

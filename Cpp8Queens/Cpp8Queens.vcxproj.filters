@@ -74,5 +74,8 @@
     <None Include="x64\Release\queens.asm">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="x64\Release\sixteen_queens_common.asm">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

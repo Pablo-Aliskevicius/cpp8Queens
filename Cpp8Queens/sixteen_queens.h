@@ -6,7 +6,7 @@
 
 namespace qns16
 {
-    double solve(); // returns average microseconds
+    double solve(); // returns median microseconds
     void set_verbose(bool new_val);
     void test();
     void set_board_size(int size);

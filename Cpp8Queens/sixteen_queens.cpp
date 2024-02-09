@@ -1,5 +1,6 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS  // We do NOT support Microsoft's War on Standards.
 
+#include <algorithm>
 #include <bitset>
 #include <cstdint>
 #include <iostream>
@@ -157,8 +158,9 @@ namespace qns16
 		const int starting_rows_to_test = (board_size / 2) + (board_size % 2);
 		hi_res_timer::microsecs_t max_time = 0ULL;
 		hi_res_timer::microsecs_t min_time = std::numeric_limits<hi_res_timer::microsecs_t>::max();
-		hi_res_timer::microsecs_t tot_time = 0ULL;
-
+		// hi_res_timer::microsecs_t tot_time = 0ULL;
+		std::vector<hi_res_timer::microsecs_t> times_vec;
+		times_vec.reserve(loops);
 
 		for (int loop = 0; loop < loops; ++loop)
 		{
@@ -181,28 +183,34 @@ namespace qns16
 			// std::cout << "Resolving took " << microseconds << " microseconds." << std::endl;
 			if (microseconds < min_time) min_time = microseconds;
 			if (microseconds > max_time) max_time = microseconds;
-			tot_time += microseconds;
+			// tot_time += microseconds;
+			times_vec.push_back(microseconds);
 		}
 
 		std::time_t now = time(nullptr);
 
-		const double average_time = double(tot_time) / double(loops);
+		// const double average_time = double(tot_time) / double(loops);
+		std::sort(times_vec.begin(), times_vec.end());
+		const double median_time =
+			loops == 1 ? times_vec[0] :
+			loops & 0x1 ? times_vec[loops / 2 + 1] :
+			((times_vec[loops / 2] + times_vec[loops / 2 + 1]) / 2.0);
 
-		if (average_time < 1'000)
+		if (median_time < 1'000)
 		{
 			// Microseconds
 			std::cout
 				<< std::asctime(std::localtime(&now))
 				<< " The fastest run took " << min_time << " microseconds, the slowest took " << max_time
-				<< ", and an average of " << loops << " runs was " << average_time << "." << std::endl;
+				<< ", and a median of " << loops << " runs was " << median_time << "." << std::endl;
 		}
-		else if (average_time < 1'000'000)
+		else if (median_time < 1'000'000)
 		{
 			// Milliseconds
 			std::cout
 				<< std::asctime(std::localtime(&now))
 				<< " The fastest run took " << double(min_time) / 1e3 << " milliseconds, the slowest took " << double(max_time) / 1e3
-				<< ", and an average of " << loops << " runs was " << average_time / 1e3 << "." << std::endl;
+				<< ", and a median of " << loops << " runs was " << median_time / 1e3 << "." << std::endl;
 		}
 		else
 		{
@@ -210,12 +218,12 @@ namespace qns16
 			std::cout
 				<< std::asctime(std::localtime(&now))
 				<< " The fastest run took " << double(min_time) / 1e6 << " seconds, the slowest took " << double(max_time) / 1e6
-				<< ", and an average of " << loops << " runs was " << average_time / 1e6 << "." << std::endl;
+				<< ", and a median of " << loops << " runs was " << median_time / 1e6 << "." << std::endl;
 		}
 		do_show_results(failures_count, success_count, solutions, board_size);
 		std::cout.flush();
 
-		return double(average_time);
+		return double(median_time);
 	}
 
 	void solve_once()
