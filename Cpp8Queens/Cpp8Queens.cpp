@@ -23,6 +23,28 @@ Command line arguments:
 
 */
 
+using microsecs_t = double;
+
+enum class solution_type
+{
+    sixty_four_standard,
+    avx2_multi_threaded,
+    avx2_single_threaded,
+    two_fifty_six_standard
+};
+
+// Template lambdas require an argument. Old fashioned is good.
+template<typename Solver, typename durations_t>
+void run(durations_t& durations, int first_size, int end_size, solution_type sol_type)
+{
+    for (int desired_board_size = first_size; desired_board_size < end_size; ++desired_board_size)
+    {
+        Solver::set_board_size(desired_board_size);
+        microsecs_t median_duration = Solver::solve();
+        durations[desired_board_size][sol_type] = median_duration;
+    }
+};
+
 int main(int argc, const char** argv)
 {
     bool verbose = false;
@@ -46,41 +68,28 @@ int main(int argc, const char** argv)
                 int short_trials = atoi(argv[++i]);
                 if (0 < short_trials)
                 {
-                    qns::set_short(short_trials);
+                    qns::solver::set_short(short_trials);
                 }
         } // switch
     }
 
     if (verbose)
     {
-        qns::set_verbose(true);
+        qns::solver::set_verbose(true);
     }
     if (test)
     {
-        qns::test();
+        qns::solver::test();
         qns16cmn::test();
-        qns16::test();
-        qns16avx2::test();
+        qns16::solver::test();
+        qns16avx2::solver::test();
         return 0;
     }
-    enum class solution_type
-    {
-        sixty_four_standard, 
-        avx2_multi_threaded, 
-        avx2_single_threaded,
-        two_fifty_six_standard
-    };
-    using microsecs_t = double;
 
     std::map< int, std::map<solution_type, microsecs_t> > durations;
 
     std::cout << "****************************** 64-bits, standard code ******************************" << std::endl;
-    for (int desired_board_size = 4; desired_board_size < 9; ++desired_board_size)
-    {
-        qns::set_board_size(desired_board_size);
-        microsecs_t median_duration = qns::solve();
-        durations[desired_board_size][solution_type::sixty_four_standard] = median_duration;
-    }
+    run<qns::solver, decltype(durations)>(durations, 4, 9, solution_type::sixty_four_standard);
 
     // Don't feel like adding a header just to declare two functions.
     extern void print_out_instruction_sets();
@@ -91,30 +100,14 @@ int main(int argc, const char** argv)
     {
         std::cout << "****************************** 256-bits, AVX2, multi threaded ******************************" << std::endl;
         // I have four cores, no point trying under 8.
-        for (int desired_board_size = 8; desired_board_size < 17; ++desired_board_size)
-        {
-            qns16avx2mt::set_board_size(desired_board_size);
-            microsecs_t median_duration = qns16avx2mt::solve();
-            durations[desired_board_size][solution_type::avx2_multi_threaded] = median_duration;
-        }
+        run<qns16avx2mt::solver, decltype(durations)>(durations, 8, 17, solution_type::avx2_multi_threaded);
 
         std::cout << "****************************** 256-bits, AVX2, single threaded *****************************" << std::endl;
-        // Single threaded version
-        for (int desired_board_size = 4; desired_board_size < 17; ++desired_board_size)
-        {
-            qns16avx2::set_board_size(desired_board_size);
-            microsecs_t median_duration = qns16avx2::solve();
-            durations[desired_board_size][solution_type::avx2_single_threaded] = median_duration;
-        }
+        run<qns16avx2::solver, decltype(durations)>(durations, 4, 17, solution_type::avx2_single_threaded);
     }
 
     // Reference: support 16 by 16 without using AVX2.
-    for (int desired_board_size = 4; desired_board_size < 17; ++desired_board_size)
-    {
-        qns16::set_board_size(desired_board_size);
-        microsecs_t median_duration = qns16::solve();
-        durations[desired_board_size][solution_type::two_fifty_six_standard] = median_duration;
-    }
+    run<qns16::solver, decltype(durations)>(durations, 4, 17, solution_type::two_fifty_six_standard);
 
     // Display data. C++ 20 brings some handy methods, very nice to have.  
     using std::cout;
@@ -126,8 +119,8 @@ int main(int argc, const char** argv)
     };
     cout 
         << "***************** Median durations (microseconds) ****************" << endl 
-        << "Size,      64 bits,       256 bits,           AVX2, AVX2 Multi Threaded" << endl
-        << "---    -----------  --------------  --------------  --------------" << endl
+        << "Size,      64 bits,       256 bits,           AVX2, AVX2 Multithreaded" << endl
+        << "---    ------------ --------------- --------------- --------------" << endl
         ;
     const char* sep = ",";
     const char* na = "N/A";

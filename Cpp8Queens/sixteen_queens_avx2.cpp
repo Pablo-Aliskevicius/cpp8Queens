@@ -1,6 +1,5 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS  // We do NOT support Microsoft's War on Standards.
 
-#include <algorithm>
 #include <array>
 #include <bitset>
 #include <cstdint>
@@ -14,6 +13,7 @@
 #include "sixteen_queens_avx2.h"
 #include "high_res_clock.h"
 #include "write_solutions.h"
+#include "utils.h"
 
 using namespace qns16cmn;
 
@@ -175,7 +175,7 @@ namespace qns16avx2
         solution[next_column] = -1;
     } // void do_solve(map_t map, std::vector<int>& solution, int current_column)
 
-    double solve()
+    double solver::solve()
     {
         failures_count = 0ULL;
         success_count = 0ULL;
@@ -186,7 +186,6 @@ namespace qns16avx2
         const int starting_rows_to_test = (board_size / 2) + (board_size % 2);
         hi_res_timer::microsecs_t max_time = 0ULL;
         hi_res_timer::microsecs_t min_time = std::numeric_limits<hi_res_timer::microsecs_t>::max();
-        // hi_res_timer::microsecs_t tot_time = 0ULL;
         std::vector<hi_res_timer::microsecs_t> times_vec;
         times_vec.reserve(loops);
 
@@ -208,46 +207,13 @@ namespace qns16avx2
             }
             timer.Stop();
             auto microseconds = timer.GetElapsedMicroseconds();
-            // std::cout << "Resolving took " << microseconds << " microseconds." << std::endl;
             if (microseconds < min_time) min_time = microseconds;
             if (microseconds > max_time) max_time = microseconds;
-            // tot_time += microseconds;
             times_vec.push_back(microseconds);
         }
 
-        std::time_t now = time(nullptr);
-
-        // const double average_time = double(tot_time) / double(loops);
-        std::sort(times_vec.begin(), times_vec.end());
-        const double median_time =
-            loops == 1 ? times_vec[0] :
-            loops & 0x1 ? times_vec[loops / 2 + 1] :
-            ((times_vec[loops / 2] + times_vec[loops / 2 + 1]) / 2.0);
-
-        if (median_time < 1'000)
-        {
-            // Microseconds
-            std::cout
-                << std::asctime(std::localtime(&now))
-                << " The fastest run took " << min_time << " microseconds, the slowest took " << max_time
-                << ", and a median of " << loops << " runs was " << median_time << "." << std::endl;
-        }
-        else if (median_time < 1'000'000)
-        {
-            // Milliseconds
-            std::cout
-                << std::asctime(std::localtime(&now))
-                << " The fastest run took " << double(min_time) / 1e3 << " milliseconds, the slowest took " << double(max_time) / 1e3
-                << ", and a median of " << loops << " runs was " << median_time / 1e3 << "." << std::endl;
-        }
-        else
-        {
-            // Seconds. 16x16 takes above 17 seconds. 
-            std::cout
-                << std::asctime(std::localtime(&now))
-                << " The fastest run took " << double(min_time) / 1e6 << " seconds, the slowest took " << double(max_time) / 1e6
-                << ", and a median of " << loops << " runs was " << median_time / 1e6 << "." << std::endl;
-        }
+        double median_time; 
+        utils::ComputeAndDisplayMedianSpeed(median_time, times_vec, min_time, max_time);
         do_show_results(failures_count, success_count, solutions, board_size);
         std::cout.flush();
         return double(median_time);
@@ -280,13 +246,13 @@ namespace qns16avx2
         std::cout.flush();
     }
 
-    void set_verbose(bool new_val)
+    void solver::set_verbose(bool new_val)
     {
         std::cout << "Setting verbose to " << new_val << std::endl;
         verbose = new_val;
     }
 
-    void test()
+    void solver::test()
     {
         using std::cout;
         using std::endl;
@@ -316,7 +282,7 @@ namespace qns16avx2
 
     }
 
-    void set_board_size(int size)
+    void solver::set_board_size(int size)
     {
         if (size < 4)
         {

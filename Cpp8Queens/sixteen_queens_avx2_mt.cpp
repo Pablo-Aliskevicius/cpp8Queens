@@ -15,6 +15,8 @@
 #include "high_res_clock.h"
 #include "write_solutions.h"
 #include "thread_pool.h"
+#include "utils.h"
+
 
 using namespace qns16cmn;
 
@@ -233,7 +235,7 @@ namespace qns16avx2mt
         int get_success_count() const { return m_data.success_count; }
     };
 
-    double solve()
+    double solver::solve()
     {
         failures_count = 0ULL;
         success_count = 0ULL;
@@ -244,7 +246,6 @@ namespace qns16avx2mt
         const int starting_rows_to_test = (board_size / 2) + (board_size % 2);
         hi_res_timer::microsecs_t max_time = 0ULL;
         hi_res_timer::microsecs_t min_time = std::numeric_limits<hi_res_timer::microsecs_t>::max();
-        // hi_res_timer::microsecs_t tot_time = 0ULL;
         std::vector<hi_res_timer::microsecs_t> times_vec;
         times_vec.reserve(loops);
 
@@ -313,62 +314,23 @@ namespace qns16avx2mt
             auto microseconds = timer.GetElapsedMicroseconds();
             if (microseconds < min_time) min_time = microseconds;
             if (microseconds > max_time) max_time = microseconds;
-            // tot_time += microseconds;
             times_vec.push_back(microseconds);
         }
 
-        // const double average_time = double(tot_time) / double(loops);
-        std::sort(times_vec.begin(), times_vec.end());
-        const double median_time = 
-            loops == 1 ? times_vec[0]:
-            loops & 0x1 ? times_vec[loops / 2 + 1] :
-            ((times_vec[loops / 2] + times_vec[loops / 2 + 1]) / 2.0);
-
-        std::time_t now = time(nullptr);
-        std::string s_now(std::asctime(std::localtime(&now)));
-        s_now.pop_back();
-        if (median_time < 1'000)
-        {
-            // Microseconds
-            std::cout
-                << s_now
-                << " Found " << success_count << " solutions with " << failures_count << " failures " << std::endl
-                << " The fastest run took " << min_time << " microseconds, the slowest took " << max_time
-                << ", and a median of " << loops << " runs was " << median_time 
-                << " for a board of size " << board_size << " by " << board_size <<"." << std::endl;
-        }
-        else if (median_time < 1'000'000)
-        {
-            // Milliseconds
-            std::cout
-                << s_now
-                << " Found " << success_count << " solutions with " << failures_count << " failures " << std::endl
-                << " The fastest run took " << double(min_time) / 1e3 << " milliseconds, the slowest took " << double(max_time) / 1e3
-                << ", and a median of " << loops << " runs was " << median_time / 1e3 
-                << " for a board of size " << board_size << " by " << board_size << "." << std::endl;
-        }
-        else
-        {
-            // Seconds. 16x16 takes above 17 seconds. 
-            std::cout
-                << s_now
-                << " Found " << success_count << " solutions with " << failures_count << " failures " << std::endl
-                << " The fastest run took " << double(min_time) / 1e6 << " seconds, the slowest took " << double(max_time) / 1e6
-                << ", and a median of " << loops << " runs was " << median_time / 1e6
-                << " for a board of size " << board_size << " by " << board_size << "." << std::endl;
-        }
+        double median_time;
+        utils::ComputeAndDisplayMedianSpeed(median_time, times_vec, min_time, max_time);
         // TODO: Merge solutions and call this. do_show_results(failures_count, success_count, solutions, board_size);
         std::cout.flush();
         return double(median_time);
     }
 
-    void set_verbose(bool new_val)
+    void solver::set_verbose(bool new_val)
     {
         std::cout << "Setting verbose to " << new_val << std::endl;
         verbose = new_val;
     }
 
-    void test()
+    void solver::test()
     {
         using std::cout;
         using std::endl;
@@ -398,7 +360,7 @@ namespace qns16avx2mt
 
     }
 
-    void set_board_size(int size)
+    void solver::set_board_size(int size)
     {
         if (size < 4)
         {

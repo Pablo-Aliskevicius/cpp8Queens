@@ -6,8 +6,12 @@
 
 namespace qns16
 {
-    double solve(); // returns median microseconds
-    void set_verbose(bool new_val);
-    void test();
-    void set_board_size(int size);
+    // namespace cannot be a template argument
+    struct solver
+    {
+        static double solve(); // returns median microseconds
+        static void set_verbose(bool new_val);
+        static void test();
+        static void set_board_size(int size);
+    };
 }
