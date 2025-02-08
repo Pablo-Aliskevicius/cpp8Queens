@@ -9,8 +9,7 @@
 
 namespace utils
 {
-    void ComputeAndDisplayMedianSpeed(
-        double& median_time,
+    double ComputeAndDisplayMedianSpeed(
         std::vector<hi_res_timer::microsecs_t>& times_vec,
         const hi_res_timer::microsecs_t min_time,
         const hi_res_timer::microsecs_t max_time)
@@ -22,7 +21,7 @@ namespace utils
         const auto loops = times_vec.size();
         const auto middle = loops / 2;
 
-        median_time =
+        const double median_time =
             loops & 0x1 ? times_vec[middle] :
             ((times_vec[middle] + times_vec[middle - 1]) / 2.0);  // e.g. 4 -> 2, 1; 2 -> 1, 0
 
@@ -50,5 +49,6 @@ namespace utils
                 << " The fastest run took " << double(min_time) / 1e6 << " seconds, the slowest took " << double(max_time) / 1e6
                 << ", and a median of " << loops << " runs was " << median_time / 1e6 << "." << std::endl;
         }
+        return median_time;
     }
 }

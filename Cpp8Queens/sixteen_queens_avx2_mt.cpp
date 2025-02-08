@@ -28,21 +28,22 @@ namespace qns16avx2mt
     // See documentation for int _may_i_use_cpu_feature (unsigned __int64 a); there are equivalent options for other compilers.
     // Should also look at the examples in https://www.codeproject.com/Articles/874396/Crunching-Numbers-with-AVX-and-AVX
     // And the movie: https://www.youtube.com/watch?v=AT5nuQQO96o 
+    // Note: don't take __m256i by referance, always by value. Most of the time it's a register, dereference and you lose.
 
     // Bitwise equality. 
-    inline bool operator == (const m256i& a, const m256i& b)
+    __forceinline bool operator == (const m256i a, const m256i b)
     {
         return (0xffff'ffff == _mm256_movemask_epi8(_mm256_cmpeq_epi16(a, b)));
     }
 
     // Bitwise and.
-    inline m256i operator & (const m256i& a, const m256i& b)
+    __forceinline m256i operator & (const m256i a, const m256i b)
     {
         return _mm256_and_si256(a, b);
     }
 
     // Bitwise or.
-    inline m256i operator | (const m256i& a, const m256i& b)
+    __forceinline m256i operator | (const m256i a, const m256i b)
     {
         return _mm256_or_si256(a, b);
     }
@@ -99,9 +100,9 @@ namespace qns16avx2mt
         }
     };
 
-    inline bool is_totally_under_threat(const map_t& map, int current_column)
+    inline bool is_totally_under_threat(const map_t map, int current_column)
     {
-        const auto & column_mask = column_masks[current_column];
+        const auto column_mask = column_masks[current_column];
         return ((map & column_mask) == column_mask);
     }
 
@@ -144,7 +145,7 @@ namespace qns16avx2mt
         {
             // pass
         }
-        inline const map_t Threaten(const map_t& map, int row, int col) const
+        inline const map_t Threaten(const map_t map, int row, int col) const
         { 
             // Equivalent to this:
             // return (map | row_masks[row] | main_diagonal_parallels[row + 15 - column] | second_diagonal_parallels[row + column]);
@@ -154,7 +155,7 @@ namespace qns16avx2mt
     static const Threats threats;
 
     // map by value, because it't not const. 
-    void do_solve(const map_t& map, std::vector<int>& solution, int current_column, thread_data &td)
+    void do_solve(const map_t map, std::vector<int>& solution, int current_column, thread_data &td)
     {
         const int next_column = 1 + current_column;
         if (next_column == board_size)
@@ -317,8 +318,7 @@ namespace qns16avx2mt
             times_vec.push_back(microseconds);
         }
 
-        double median_time;
-        utils::ComputeAndDisplayMedianSpeed(median_time, times_vec, min_time, max_time);
+        const double median_time = utils::ComputeAndDisplayMedianSpeed(times_vec, min_time, max_time);
         // TODO: Merge solutions and call this. do_show_results(failures_count, success_count, solutions, board_size);
         std::cout.flush();
         return double(median_time);

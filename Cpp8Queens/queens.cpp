@@ -231,9 +231,8 @@ namespace qns
             return result;
         }
 
-
-
         // Compile-time calculation since C++ 17. Rules are TIGHT.
+        // Google "c++ immediately invoked lambda", aka []{}(); 
         template<typename VALUETYPE, unsigned int BOARD_SIZE>
         constexpr std::array<VALUETYPE, BOARD_SIZE* BOARD_SIZE> get_threats = [] { // OR: constexpr auto table
             std::array<VALUETYPE, BOARD_SIZE* BOARD_SIZE> A = {};
@@ -257,7 +256,7 @@ namespace qns
         {
             // Before template metaprogramming we did this:
             //  map |= (row_masks[row] | main_diagonal_parallels[row + 7 - column] | second_diagonal_parallels[row + column]);
-            const map_t* threats = _threats.data();
+            static const map_t* threats = _threats.data();
 #ifdef _DEBUG
             map |= threats[row * 8 + column];
             if (verbose)
@@ -397,8 +396,7 @@ double qns::solver::solve()
         times_vec.push_back(microseconds);
     }
 
-    double median_time;
-    utils::ComputeAndDisplayMedianSpeed(median_time, times_vec, min_time, max_time);
+    const double median_time = utils::ComputeAndDisplayMedianSpeed(times_vec, min_time, max_time);
     do_show_results(failures_count, success_count, solutions, board_size);
     if (success_count < solutions.size())
     {

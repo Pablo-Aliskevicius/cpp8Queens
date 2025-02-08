@@ -27,19 +27,19 @@ namespace qns16avx2
     // And the movie: https://www.youtube.com/watch?v=AT5nuQQO96o 
 
     // Bitwise equality. 
-    inline bool operator == (const m256i& a, const m256i& b)
+    __forceinline bool operator == (const m256i a, const m256i b)
     {
         return (0xffff'ffff == _mm256_movemask_epi8(_mm256_cmpeq_epi16(a, b)));
     }
 
     // Bitwise and.
-    inline m256i operator & (const m256i& a, const m256i& b)
+    __forceinline m256i operator & (const m256i a, const m256i b)
     {
         return _mm256_and_si256(a, b);
     }
 
     // Bitwise or.
-    inline m256i operator | (const m256i& a, const m256i& b)
+    __forceinline m256i operator | (const m256i a, const m256i b)
     {
         return _mm256_or_si256(a, b);
     }
@@ -54,9 +54,9 @@ namespace qns16avx2
     static bool verbose = false;
     static int board_size = maximum_allowed_board_size; // Supported sizes: 4 - 16
 
-    inline bool is_totally_under_threat(const map_t& map, int current_column)
+    inline bool is_totally_under_threat(const map_t map, int current_column)
     {
-        const auto & column_mask = column_masks[current_column];
+        const auto column_mask = column_masks[current_column];
         return ((map & column_mask) == column_mask);
     }
 
@@ -101,7 +101,7 @@ namespace qns16avx2
         {
             // pass
         }
-        inline const map_t Threaten(const map_t& map, int row, int col) const
+        inline const map_t Threaten(const map_t map, int row, int col) const
         { 
             // Equivalent to this:
             // return (map | row_masks[row] | main_diagonal_parallels[row + 15 - column] | second_diagonal_parallels[row + column]);
@@ -111,13 +111,13 @@ namespace qns16avx2
     static const Threats threats;
 
     // map by value, because it't not const. 
-    void do_solve(const map_t& map, std::vector<int>& solution, int current_column)
+    void do_solve(const map_t map, std::vector<int>& solution, int current_column)
     {
         const int next_column = 1 + current_column;
-        if (next_column == board_size)
+        if (next_column == board_size) _UNLIKELY
         {
             // Success! Copy the solution. Don't move, we still need the buffer.
-            if (success_count < solutions.size())
+            if (success_count < solutions.size()) _LIKELY
             {
                 // TODO: USE AVX2 OR MEMCPY TO COPY THE DATA. 
                 // INVARIANT: The destination has 16 integers, and the source has board_size.
@@ -137,7 +137,7 @@ namespace qns16avx2
         }
 
         const map_t new_map = threats.Threaten(map, solution[current_column], current_column);
-        if (is_totally_under_threat(new_map, next_column))
+        if (is_totally_under_threat(new_map, next_column)) _UNLIKELY
         {
             ++failures_count;
             return;
@@ -159,7 +159,7 @@ namespace qns16avx2
 #else
         for (auto current_row : not_threatened_rows(new_map& column_masks[next_column], board_size, next_column))
         {
-            if (sentinel == current_row)
+            if (sentinel == current_row) _UNLIKELY
             {
                 break;
             }
@@ -207,13 +207,12 @@ namespace qns16avx2
             }
             timer.Stop();
             auto microseconds = timer.GetElapsedMicroseconds();
-            if (microseconds < min_time) min_time = microseconds;
-            if (microseconds > max_time) max_time = microseconds;
+            if (microseconds < min_time) _UNLIKELY min_time = microseconds;
+            if (microseconds > max_time) _UNLIKELY max_time = microseconds;
             times_vec.push_back(microseconds);
         }
 
-        double median_time; 
-        utils::ComputeAndDisplayMedianSpeed(median_time, times_vec, min_time, max_time);
+        const double median_time = utils::ComputeAndDisplayMedianSpeed(times_vec, min_time, max_time);
         do_show_results(failures_count, success_count, solutions, board_size);
         std::cout.flush();
         return double(median_time);

@@ -184,8 +184,7 @@ namespace qns16
 			times_vec.push_back(microseconds);
 		}
 
-		double median_time;
-		utils::ComputeAndDisplayMedianSpeed(median_time, times_vec, min_time, max_time);
+		const double median_time = utils::ComputeAndDisplayMedianSpeed(times_vec, min_time, max_time);
 		do_show_results(failures_count, success_count, solutions, board_size);
 		std::cout.flush();
 

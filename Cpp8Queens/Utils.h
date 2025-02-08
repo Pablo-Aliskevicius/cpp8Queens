@@ -6,8 +6,7 @@
 
 namespace utils
 {
-    void ComputeAndDisplayMedianSpeed(
-        double& median_time,
+    double ComputeAndDisplayMedianSpeed(
         std::vector<hi_res_timer::microsecs_t>& times_vec,
         const hi_res_timer::microsecs_t min_time,
         const hi_res_timer::microsecs_t max_time);
